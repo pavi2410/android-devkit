@@ -1,0 +1,205 @@
+{
+  "name": "android-devkit",
+  "displayName": "Android DevKit",
+  "description": "Comprehensive Android development tools for VS Code",
+  "version": "0.1.0",
+  "publisher": "pavi2410",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pavi2410/android-devkit"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Debuggers",
+    "Other"
+  ],
+  "keywords": [
+    "android",
+    "adb",
+    "logcat",
+    "gradle",
+    "kotlin",
+    "java",
+    "emulator"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/build.gradle",
+    "workspaceContains:**/build.gradle.kts",
+    "workspaceContains:**/settings.gradle",
+    "workspaceContains:**/settings.gradle.kts",
+    "workspaceContains:**/AndroidManifest.xml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "android-devkit",
+          "title": "Android DevKit",
+          "icon": "$(device-mobile)"
+        }
+      ],
+      "panel": [
+        {
+          "id": "android-devkit-panel",
+          "title": "Logcat",
+          "icon": "$(output)"
+        }
+      ]
+    },
+    "views": {
+      "android-devkit": [
+        {
+          "id": "androidDevkit.devices",
+          "name": "Devices",
+          "icon": "$(device-mobile)",
+          "contextualTitle": "Android Devices"
+        }
+      ],
+      "android-devkit-panel": [
+        {
+          "id": "androidDevkit.logcat",
+          "name": "Logcat",
+          "type": "tree",
+          "contextualTitle": "Android Logcat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "androidDevkit.refreshDevices",
+        "title": "Refresh Devices",
+        "icon": "$(refresh)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.takeScreenshot",
+        "title": "Take Screenshot",
+        "icon": "$(device-camera)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.rebootDevice",
+        "title": "Reboot Device",
+        "icon": "$(debug-restart)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.connectDevice",
+        "title": "Connect Device (Wireless)",
+        "icon": "$(plug)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.startLogcat",
+        "title": "Start Logcat",
+        "icon": "$(play)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.stopLogcat",
+        "title": "Stop Logcat",
+        "icon": "$(debug-stop)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.clearLogcat",
+        "title": "Clear Logcat",
+        "icon": "$(clear-all)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.setLogcatFilter",
+        "title": "Set Logcat Filter",
+        "icon": "$(filter)",
+        "category": "Android DevKit"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "androidDevkit.refreshDevices",
+          "when": "view == androidDevkit.devices",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.connectDevice",
+          "when": "view == androidDevkit.devices",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.startLogcat",
+          "when": "view == androidDevkit.logcat && !androidDevkit.logcatRunning",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.stopLogcat",
+          "when": "view == androidDevkit.logcat && androidDevkit.logcatRunning",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.clearLogcat",
+          "when": "view == androidDevkit.logcat",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.setLogcatFilter",
+          "when": "view == androidDevkit.logcat",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "androidDevkit.takeScreenshot",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "inline"
+        },
+        {
+          "command": "androidDevkit.rebootDevice",
+          "when": "view == androidDevkit.devices && viewItem == device"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Android DevKit",
+      "properties": {
+        "androidDevkit.adbPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to ADB executable. Leave empty to use ADB from PATH or ANDROID_HOME."
+        },
+        "androidDevkit.sdkPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Android SDK. Leave empty to auto-detect from ANDROID_HOME or ANDROID_SDK_ROOT."
+        },
+        "androidDevkit.logcat.defaultFilter": {
+          "type": "string",
+          "default": "",
+          "description": "Default logcat filter (e.g., 'MyApp:D *:S')"
+        },
+        "androidDevkit.logcat.maxLines": {
+          "type": "number",
+          "default": 10000,
+          "description": "Maximum number of logcat lines to keep in memory"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "bun run build",
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
+    "package": "vsce package --no-dependencies",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0"
+  }
+}

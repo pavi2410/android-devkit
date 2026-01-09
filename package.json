@@ -1,0 +1,17 @@
+{
+  "name": "android-devkit",
+  "private": true,
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "dev": "bun run --filter 'android-devkit' dev",
+    "test": "bun run --filter '*' test",
+    "lint": "bunx oxlint",
+    "clean": "bun run --filter '*' clean"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
