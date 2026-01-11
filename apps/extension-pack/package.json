@@ -1,0 +1,37 @@
+{
+  "name": "android-devkit-pack",
+  "displayName": "Android DevKit Pack",
+  "description": "Complete Android development environment for VS Code - includes Android DevKit, Java, Kotlin, and Gradle support",
+  "version": "0.1.0",
+  "publisher": "pavi2410",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pavi2410/android-devkit"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Extension Packs"
+  ],
+  "keywords": [
+    "android",
+    "kotlin",
+    "java",
+    "gradle",
+    "adb",
+    "emulator",
+    "mobile"
+  ],
+  "extensionPack": [
+    "pavi2410.android-devkit",
+    "redhat.java",
+    "vscjava.vscode-gradle",
+    "fwcd.kotlin",
+    "redhat.vscode-xml"
+  ],
+  "scripts": {
+    "package": "mkdir -p build && bunx vsce package --no-dependencies --no-rewrite-relative-links --no-gitHubIssueLinking -o build/"
+  }
+}

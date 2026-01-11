@@ -3,13 +3,17 @@
   "private": true,
   "scripts": {
     "build": "bun run --filter '*' build",
+    "build:packages": "bun run --filter './packages/*' build",
+    "build:apps": "bun run --filter './apps/*' build",
+    "package": "bun run --filter './apps/*' package",
     "dev": "bun run --filter 'android-devkit' dev",
     "test": "bun run --filter '*' test",
     "lint": "bunx oxlint",
     "clean": "bun run --filter '*' clean"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "devDependencies": {
     "typescript": "^5.7.0"

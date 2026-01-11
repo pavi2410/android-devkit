@@ -6,28 +6,62 @@
       "type": "shell",
       "command": "bun run build",
       "options": {
-        "cwd": "${workspaceFolder}/packages/extension"
+        "cwd": "${workspaceFolder}/apps/extension"
+      },
+      "dependsOn": ["build-adb"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "build-adb",
+      "type": "shell",
+      "command": "bun run build",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/adb"
       },
       "group": "build",
       "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "install-extension-pack",
+      "type": "shell",
+      "command": "bun run package && code --profile Android-DevKit --install-extension apps/extension/build/android-devkit-0.1.0.vsix --install-extension apps/extension-pack/build/android-devkit-pack-0.1.0.vsix",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["build-extension"],
+      "problemMatcher": []
     },
     {
       "label": "watch-extension",
       "type": "shell",
       "command": "bun run dev",
       "options": {
-        "cwd": "${workspaceFolder}/packages/extension"
+        "cwd": "${workspaceFolder}/apps/extension"
       },
+      "dependsOn": ["build-adb"],
       "isBackground": true,
       "group": "build",
-      "problemMatcher": ["$esbuild-watch"]
-    },
-    {
-      "label": "build-all",
-      "type": "shell",
-      "command": "bun run build",
-      "group": "build",
-      "problemMatcher": ["$tsc"]
+      "problemMatcher": {
+        "owner": "esbuild",
+        "fileLocation": ["relative", "${workspaceFolder}/apps/extension"],
+        "pattern": {
+          "regexp": "^(.*):(\\d+):(\\d+):\\s+(error|warning):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[watch\\]",
+          "endsPattern": "^\\s*done\\b|^\\s*\\d+ modules\\b"
+        }
+      }
     }
   ]
 }

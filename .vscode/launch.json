@@ -6,23 +6,51 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/packages/extension"
+        "--profile=Android-DevKit",
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/extension"
       ],
       "outFiles": [
-        "${workspaceFolder}/packages/extension/dist/**/*.js"
+        "${workspaceFolder}/apps/extension/dist/**/*.js"
       ],
       "preLaunchTask": "build-extension"
+    },
+    {
+      "name": "Run Extension (Watch)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--profile=Android-DevKit",
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/extension"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/extension/dist/**/*.js"
+      ],
+      "preLaunchTask": "watch-extension"
     },
     {
       "name": "Run Extension (No Build)",
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/packages/extension"
+        "--profile=Android-DevKit",
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/extension"
       ],
       "outFiles": [
-        "${workspaceFolder}/packages/extension/dist/**/*.js"
+        "${workspaceFolder}/apps/extension/dist/**/*.js"
       ]
+    },
+    {
+      "name": "Run Extension Pack",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--profile=Android-DevKit",
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/extension"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/extension/dist/**/*.js"
+      ],
+      "preLaunchTask": "install-extension-pack"
     }
   ]
 }

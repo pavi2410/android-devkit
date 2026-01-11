@@ -194,8 +194,11 @@
     "vscode:prepublish": "bun run build",
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
     "dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
-    "package": "vsce package --no-dependencies",
+    "package": "mkdir -p build && bunx vsce package --no-dependencies -o build/",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@android-devkit/adb": "workspace:*"
   },
   "devDependencies": {
     "@types/vscode": "^1.96.0",
