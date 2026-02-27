@@ -1,5 +1,5 @@
 import type { AdbClient } from "./client.js";
-import type { Device, DeviceState } from "./types.js";
+import type { ConnectionType, Device, DeviceState } from "./types.js";
 
 /**
  * Parse a device line from `adb devices -l` output
@@ -22,6 +22,8 @@ function parseDeviceLine(line: string): Device | null {
     }
   }
 
+  const connectionType = detectConnectionType(serial);
+
   return {
     serial,
     state,
@@ -29,7 +31,8 @@ function parseDeviceLine(line: string): Device | null {
     product: props["product"],
     device: props["device"],
     transportId: props["transport_id"],
-    isEmulator: serial.startsWith("emulator-") || serial.includes(":5555"),
+    isEmulator: connectionType === "emulator",
+    connectionType,
   };
 }
 
@@ -208,4 +211,216 @@ export async function forceStopApp(
   packageName: string
 ): Promise<void> {
   await client.shell(`am force-stop ${packageName}`, { serial });
+}
+
+/**
+ * Detect how a device is connected based on its serial format
+ *
+ * - `emulator-XXXX` → emulator
+ * - `IP:5555` → tcpip (legacy `adb tcpip 5555`)
+ * - `IP:XXXXX` (high port, typically 37000-44000) → wireless (Android 11+ wireless debugging via mDNS)
+ * - `adb-*` prefix with mDNS service name → wireless
+ * - anything else → usb
+ */
+function detectConnectionType(serial: string): ConnectionType {
+  if (serial.startsWith("emulator-")) {
+    return "emulator";
+  }
+
+  // Network device: IP:PORT
+  const ipPortMatch = serial.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d+)$/);
+  if (ipPortMatch) {
+    const port = parseInt(ipPortMatch[2], 10);
+    // Port 5555 is the conventional `adb tcpip` port
+    if (port === 5555) {
+      return "tcpip";
+    }
+    // High ports are used by Android 11+ wireless debugging
+    return "wireless";
+  }
+
+  // mDNS-discovered device (adb-SERIAL-XXXXXX)
+  if (serial.startsWith("adb-")) {
+    return "wireless";
+  }
+
+  return "usb";
+}
+
+/**
+ * Pair with a device for wireless debugging (Android 11+)
+ */
+export async function pairDevice(
+  client: AdbClient,
+  host: string,
+  port: number,
+  pairingCode: string
+): Promise<string> {
+  const result = await client.execWithStdin(
+    ["pair", `${host}:${port}`],
+    pairingCode
+  );
+  return (result.stdout + result.stderr).trim();
+}
+
+/**
+ * Discover devices via mDNS (requires ADB 31+)
+ */
+export async function listMdnsServices(
+  client: AdbClient
+): Promise<{ name: string; type: string; address: string }[]> {
+  const result = await client.exec(["mdns", "services"], { timeout: 5000 });
+  const lines = result.stdout.split("\n");
+  const services: { name: string; type: string; address: string }[] = [];
+
+  for (const line of lines) {
+    // Format: name\ttype\taddress
+    const parts = line.trim().split("\t");
+    if (parts.length >= 3) {
+      services.push({ name: parts[0], type: parts[1], address: parts[2] });
+    }
+  }
+
+  return services;
+}
+
+/**
+ * Check if mDNS is supported
+ */
+export async function isMdnsSupported(client: AdbClient): Promise<boolean> {
+  try {
+    const result = await client.exec(["mdns", "check"], { timeout: 5000 });
+    return result.stdout.includes("mdns daemon running");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Enable TCP/IP mode on a USB-connected device
+ */
+export async function enableTcpip(
+  client: AdbClient,
+  serial: string,
+  port: number = 5555
+): Promise<string> {
+  const result = await client.exec(["tcpip", port.toString()], { serial });
+  return result.stdout.trim();
+}
+
+/**
+ * List installed packages on a device
+ */
+export async function listPackages(
+  client: AdbClient,
+  serial: string
+): Promise<string[]> {
+  const result = await client.shell("pm list packages", { serial });
+  return result.stdout
+    .split("\n")
+    .filter((l) => l.startsWith("package:"))
+    .map((l) => l.replace("package:", "").trim());
+}
+
+/**
+ * Get the PID of a running package
+ */
+export async function getPidForPackage(
+  client: AdbClient,
+  serial: string,
+  packageName: string
+): Promise<number | null> {
+  const result = await client.shell(`pidof ${packageName}`, { serial });
+  const pid = parseInt(result.stdout.trim(), 10);
+  return isNaN(pid) ? null : pid;
+}
+
+/**
+ * List files on a device path
+ */
+export async function listFiles(
+  client: AdbClient,
+  serial: string,
+  remotePath: string
+): Promise<{ name: string; type: "file" | "directory" | "link" | "other"; size: number; permissions: string; modifiedDate: string }[]> {
+  const result = await client.shell(`ls -la ${remotePath}`, { serial });
+  const lines = result.stdout.split("\n");
+  const files: { name: string; type: "file" | "directory" | "link" | "other"; size: number; permissions: string; modifiedDate: string }[] = [];
+
+  for (const line of lines) {
+    // Format: permissions links owner group size date time name [-> target]
+    // Example: drwxr-xr-x  2 root root 4096 2024-01-01 00:00 dirname
+    // Example: -rw-r--r--  1 root root 1234 2024-01-01 00:00 filename
+    const match = line.match(/^([dlcbps-][rwxsStT-]{9})\s+\d+\s+\S+\s+\S+\s+(\d+)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(.+)$/);
+    if (!match) continue;
+
+    const [, permissions, sizeStr, modifiedDate, nameRaw] = match;
+    let name = nameRaw.trim();
+
+    // Skip . and ..
+    if (name === "." || name === "..") continue;
+
+    // Handle symlinks: name -> target
+    if (name.includes(" -> ")) {
+      name = name.split(" -> ")[0];
+    }
+
+    let type: "file" | "directory" | "link" | "other" = "other";
+    if (permissions.startsWith("d")) type = "directory";
+    else if (permissions.startsWith("-")) type = "file";
+    else if (permissions.startsWith("l")) type = "link";
+
+    files.push({
+      name,
+      type,
+      size: parseInt(sizeStr, 10),
+      permissions,
+      modifiedDate,
+    });
+  }
+
+  return files;
+}
+
+/**
+ * Pull a file from device to local path
+ */
+export async function pullFile(
+  client: AdbClient,
+  serial: string,
+  remotePath: string,
+  localPath: string
+): Promise<void> {
+  const result = await client.exec(["pull", remotePath, localPath], { serial, timeout: 120000 });
+  if (result.exitCode !== 0) {
+    throw new Error(`Failed to pull file: ${result.stderr}`);
+  }
+}
+
+/**
+ * Push a local file to device
+ */
+export async function pushFile(
+  client: AdbClient,
+  serial: string,
+  localPath: string,
+  remotePath: string
+): Promise<void> {
+  const result = await client.exec(["push", localPath, remotePath], { serial, timeout: 120000 });
+  if (result.exitCode !== 0) {
+    throw new Error(`Failed to push file: ${result.stderr}`);
+  }
+}
+
+/**
+ * Delete a file or directory on device
+ */
+export async function deleteFile(
+  client: AdbClient,
+  serial: string,
+  remotePath: string,
+  recursive: boolean = false
+): Promise<void> {
+  const cmd = recursive ? `rm -rf ${remotePath}` : `rm ${remotePath}`;
+  await client.shell(cmd, { serial });
 }

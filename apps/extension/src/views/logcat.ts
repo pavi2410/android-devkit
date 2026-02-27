@@ -2,19 +2,6 @@ import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
 import type { LogcatEntry, LogLevel } from "@android-devkit/adb";
 
-/**
- * Log level colors for output channel
- */
-const LOG_LEVEL_COLORS: Record<LogLevel, string> = {
-  V: "gray",
-  D: "blue",
-  I: "green",
-  W: "yellow",
-  E: "red",
-  F: "magenta",
-  S: "white",
-};
-
 export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<LogcatTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -25,6 +12,8 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private currentDevice?: string;
   private filter?: string;
   private minLevel: LogLevel = "V";
+  private packageFilter?: string;
+  private pidFilter?: number;
 
   constructor(private adbService: AdbService) {
     this.outputChannel = vscode.window.createOutputChannel("Android Logcat", { log: true });
@@ -61,6 +50,14 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
       items.push(new FilterItem(this.filter));
     }
 
+    // Package filter item
+    if (this.packageFilter) {
+      const desc = this.pidFilter
+        ? `${this.packageFilter} (PID: ${this.pidFilter})`
+        : `${this.packageFilter} (not running)`;
+      items.push(new PackageFilterItem(desc));
+    }
+
     // Stats
     items.push(new StatsItem(this.entries.length, this.maxEntries));
 
@@ -86,6 +83,11 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
       ) {
         return;
       }
+    }
+
+    // Check package/PID filter
+    if (this.pidFilter && entry.pid !== this.pidFilter) {
+      return;
     }
 
     // Add to entries list (with max limit)
@@ -183,6 +185,15 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   }
 
   /**
+   * Set package name filter (optionally with resolved PID)
+   */
+  setPackageFilter(packageName?: string, pid?: number): void {
+    this.packageFilter = packageName;
+    this.pidFilter = pid;
+    this.refresh();
+  }
+
+  /**
    * Show the output channel
    */
   show(): void {
@@ -210,6 +221,14 @@ class FilterItem extends LogcatTreeItem {
     super("Filter", vscode.TreeItemCollapsibleState.None);
     this.description = filter;
     this.iconPath = new vscode.ThemeIcon("filter");
+  }
+}
+
+class PackageFilterItem extends LogcatTreeItem {
+  constructor(detail: string) {
+    super("Package", vscode.TreeItemCollapsibleState.None);
+    this.description = detail;
+    this.iconPath = new vscode.ThemeIcon("package");
   }
 }
 

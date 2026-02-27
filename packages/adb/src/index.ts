@@ -14,6 +14,16 @@ export {
   uninstallPackage,
   launchApp,
   forceStopApp,
+  pairDevice,
+  listMdnsServices,
+  isMdnsSupported,
+  enableTcpip,
+  listPackages,
+  getPidForPackage,
+  listFiles,
+  pullFile,
+  pushFile,
+  deleteFile,
 } from "./devices.js";
 
 // Logcat
@@ -28,6 +38,7 @@ export {
 export type {
   Device,
   DeviceState,
+  ConnectionType,
   TransportType,
   LogLevel,
   LogcatEntry,

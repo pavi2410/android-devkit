@@ -1,8 +1,10 @@
 import * as vscode from "vscode";
 import type { AdbService, DeviceInfo } from "../services/adb";
 
-export class DevicesTreeProvider implements vscode.TreeDataProvider<DeviceTreeItem> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<DeviceTreeItem | undefined | null | void>();
+type DevicesTreeItem = DeviceTreeItem | PropertyItem | NoDevicesItem | ErrorItem;
+
+export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeItem> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<DevicesTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private devices: DeviceInfo[] = [];
@@ -16,15 +18,17 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DeviceTreeIt
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: DeviceTreeItem): vscode.TreeItem {
+  getTreeItem(element: DevicesTreeItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(element?: DeviceTreeItem): Promise<DeviceTreeItem[]> {
-    if (element) {
+  async getChildren(element?: DevicesTreeItem): Promise<DevicesTreeItem[]> {
+    if (element instanceof DeviceTreeItem) {
       // Device properties as children
       return this.getDeviceProperties(element.device);
     }
+
+    if (element) return [];
 
     // Root level - list devices
     try {
@@ -42,8 +46,8 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DeviceTreeIt
     }
   }
 
-  private getDeviceProperties(device: DeviceInfo): DeviceTreeItem[] {
-    const props: DeviceTreeItem[] = [];
+  private getDeviceProperties(device: DeviceInfo): PropertyItem[] {
+    const props: PropertyItem[] = [];
 
     if (device.state === "device") {
       props.push(
@@ -55,6 +59,14 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DeviceTreeIt
       if (device.product) {
         props.push(new PropertyItem("Product", device.product));
       }
+
+      const connectionLabels: Record<string, string> = {
+        emulator: "Emulator",
+        usb: "USB",
+        tcpip: "TCP/IP",
+        wireless: "Wireless",
+      };
+      props.push(new PropertyItem("Connection", connectionLabels[device.connectionType] ?? "Unknown"));
     } else {
       props.push(new PropertyItem("State", device.state));
       props.push(new PropertyItem("Serial", device.serial));
@@ -82,6 +94,12 @@ export class DeviceTreeItem extends vscode.TreeItem {
     } else if (device.isEmulator) {
       this.iconPath = new vscode.ThemeIcon("vm");
       this.description = `Android ${device.androidVersion}`;
+    } else if (device.connectionType === "wireless") {
+      this.iconPath = new vscode.ThemeIcon("radio-tower");
+      this.description = `Android ${device.androidVersion} (wireless)`;
+    } else if (device.connectionType === "tcpip") {
+      this.iconPath = new vscode.ThemeIcon("globe");
+      this.description = `Android ${device.androidVersion} (tcp/ip)`;
     } else {
       this.iconPath = new vscode.ThemeIcon("device-mobile");
       this.description = `Android ${device.androidVersion}`;
@@ -101,11 +119,13 @@ export class DeviceTreeItem extends vscode.TreeItem {
       md.appendMarkdown(`- API Level: ${this.device.apiLevel}\n`);
     }
 
-    if (this.device.isEmulator) {
-      md.appendMarkdown(`- Type: Emulator\n`);
-    } else {
-      md.appendMarkdown(`- Type: Physical Device\n`);
-    }
+    const typeLabels: Record<string, string> = {
+      emulator: "Emulator",
+      usb: "USB",
+      tcpip: "TCP/IP",
+      wireless: "Wireless (mDNS)",
+    };
+    md.appendMarkdown(`- Connection: ${typeLabels[this.device.connectionType] ?? "Unknown"}\n`);
 
     return md;
   }

@@ -58,6 +58,13 @@
           "name": "Devices",
           "icon": "$(device-mobile)",
           "contextualTitle": "Android Devices"
+        },
+        {
+          "id": "androidDevkit.fileExplorer",
+          "name": "Device Files",
+          "icon": "$(folder)",
+          "contextualTitle": "Device File Explorer",
+          "visibility": "collapsed"
         }
       ],
       "android-devkit-panel": [
@@ -90,8 +97,32 @@
       },
       {
         "command": "androidDevkit.connectDevice",
-        "title": "Connect Device (Wireless)",
+        "title": "Connect Device (TCP/IP)",
         "icon": "$(plug)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.pairDevice",
+        "title": "Pair Device (Wireless Debugging)",
+        "icon": "$(radio-tower)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.enableTcpip",
+        "title": "Enable TCP/IP Mode",
+        "icon": "$(globe)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.openShell",
+        "title": "Open ADB Shell",
+        "icon": "$(terminal)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.browseFiles",
+        "title": "Browse Device Files",
+        "icon": "$(folder-opened)",
         "category": "Android DevKit"
       },
       {
@@ -117,6 +148,42 @@
         "title": "Set Logcat Filter",
         "icon": "$(filter)",
         "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.setLogcatPackageFilter",
+        "title": "Filter Logcat by Package",
+        "icon": "$(package)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.refreshFileExplorer",
+        "title": "Refresh File Explorer",
+        "icon": "$(refresh)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.pullFile",
+        "title": "Download from Device",
+        "icon": "$(cloud-download)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.pushFile",
+        "title": "Upload to Device",
+        "icon": "$(cloud-upload)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.deleteRemoteFile",
+        "title": "Delete from Device",
+        "icon": "$(trash)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.showSdkInfo",
+        "title": "Show Android SDK Info",
+        "icon": "$(info)",
+        "category": "Android DevKit"
       }
     ],
     "menus": {
@@ -128,6 +195,11 @@
         },
         {
           "command": "androidDevkit.connectDevice",
+          "when": "view == androidDevkit.devices",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.pairDevice",
           "when": "view == androidDevkit.devices",
           "group": "navigation"
         },
@@ -150,6 +222,16 @@
           "command": "androidDevkit.setLogcatFilter",
           "when": "view == androidDevkit.logcat",
           "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.setLogcatPackageFilter",
+          "when": "view == androidDevkit.logcat",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.refreshFileExplorer",
+          "when": "view == androidDevkit.fileExplorer",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -159,8 +241,39 @@
           "group": "inline"
         },
         {
+          "command": "androidDevkit.openShell",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "inline"
+        },
+        {
+          "command": "androidDevkit.browseFiles",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "1_actions"
+        },
+        {
+          "command": "androidDevkit.enableTcpip",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "2_connection"
+        },
+        {
           "command": "androidDevkit.rebootDevice",
-          "when": "view == androidDevkit.devices && viewItem == device"
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "3_danger"
+        },
+        {
+          "command": "androidDevkit.pullFile",
+          "when": "view == androidDevkit.fileExplorer && viewItem == file",
+          "group": "inline"
+        },
+        {
+          "command": "androidDevkit.pushFile",
+          "when": "view == androidDevkit.fileExplorer && viewItem == directory",
+          "group": "inline"
+        },
+        {
+          "command": "androidDevkit.deleteRemoteFile",
+          "when": "view == androidDevkit.fileExplorer && viewItem =~ /file|directory/",
+          "group": "9_danger"
         }
       ]
     },
@@ -175,7 +288,7 @@
         "androidDevkit.sdkPath": {
           "type": "string",
           "default": "",
-          "description": "Path to Android SDK. Leave empty to auto-detect from ANDROID_HOME or ANDROID_SDK_ROOT."
+          "description": "Path to Android SDK. Leave empty to auto-detect from ANDROID_HOME, ANDROID_SDK_ROOT (deprecated), or platform-specific default paths."
         },
         "androidDevkit.logcat.defaultFilter": {
           "type": "string",

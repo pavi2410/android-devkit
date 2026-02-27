@@ -98,6 +98,62 @@ export class AdbClient {
   }
 
   /**
+   * Execute an ADB command and write to stdin
+   */
+  async execWithStdin(
+    args: string[],
+    input: string,
+    options: { serial?: string; timeout?: number } = {}
+  ): Promise<AdbResult> {
+    const fullArgs = options.serial ? ["-s", options.serial, ...args] : args;
+    const timeout = options.timeout ?? this.defaultTimeout;
+
+    return new Promise((resolve, reject) => {
+      const proc = spawn(this.adbPath, fullArgs, {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let killed = false;
+
+      const timer = setTimeout(() => {
+        killed = true;
+        proc.kill("SIGTERM");
+        reject(new Error(`ADB command timed out after ${timeout}ms`));
+      }, timeout);
+
+      proc.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on("close", (code) => {
+        clearTimeout(timer);
+        if (!killed) {
+          resolve({
+            exitCode: code ?? 0,
+            stdout,
+            stderr,
+          });
+        }
+      });
+
+      proc.on("error", (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+
+      // Write input and close stdin
+      proc.stdin.write(input + "\n");
+      proc.stdin.end();
+    });
+  }
+
+  /**
    * Connect to a device over TCP/IP
    */
   async connect(host: string, port: number = 5555): Promise<string> {

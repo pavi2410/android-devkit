@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
 import type { LogcatTreeProvider } from "../views/logcat";
-import type { LogLevel } from "@aspect/adb";
+import type { LogLevel } from "@android-devkit/adb";
 
 export function registerLogcatCommands(
   context: vscode.ExtensionContext,
@@ -55,7 +55,7 @@ export function registerLogcatCommands(
     })
   );
 
-  // Set filter
+  // Set log level filter
   context.subscriptions.push(
     vscode.commands.registerCommand("androidDevkit.setLogcatFilter", async () => {
       const levels: LogLevel[] = ["V", "D", "I", "W", "E", "F"];
@@ -98,6 +98,80 @@ export function registerLogcatCommands(
         vscode.window.showInformationMessage(`Filter set: ${filterDesc.join(", ")}`);
       } else {
         vscode.window.showInformationMessage("Filters cleared");
+      }
+    })
+  );
+
+  // Filter by package name
+  context.subscriptions.push(
+    vscode.commands.registerCommand("androidDevkit.setLogcatPackageFilter", async () => {
+      const devices = await adbService.getDevices();
+      const readyDevices = devices.filter((d) => d.state === "device");
+
+      if (readyDevices.length === 0) {
+        vscode.window.showWarningMessage("No devices connected to list packages");
+        return;
+      }
+
+      const serial = readyDevices.length === 1
+        ? readyDevices[0].serial
+        : (await vscode.window.showQuickPick(
+            readyDevices.map((d) => ({ label: d.name, description: d.serial, serial: d.serial })),
+            { placeHolder: "Select device to list packages from" }
+          ))?.serial;
+
+      if (!serial) return;
+
+      // Let user type package name or pick from installed packages
+      const inputMethod = await vscode.window.showQuickPick(
+        [
+          { label: "Type package name", value: "type" },
+          { label: "Pick from installed packages", value: "pick" },
+          { label: "Clear package filter", value: "clear" },
+        ],
+        { placeHolder: "How to set package filter?" }
+      );
+
+      if (!inputMethod) return;
+
+      if (inputMethod.value === "clear") {
+        logcatProvider.setPackageFilter(undefined);
+        vscode.window.showInformationMessage("Package filter cleared");
+        return;
+      }
+
+      let packageName: string | undefined;
+
+      if (inputMethod.value === "type") {
+        packageName = await vscode.window.showInputBox({
+          prompt: "Enter package name",
+          placeHolder: "com.example.myapp",
+        });
+      } else {
+        const packages = await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: "Loading packages..." },
+          () => adbService.listPackages(serial)
+        );
+
+        const selected = await vscode.window.showQuickPick(
+          packages.sort().map((p) => ({ label: p })),
+          { placeHolder: "Select a package", matchOnDescription: true }
+        );
+        packageName = selected?.label;
+      }
+
+      if (!packageName) return;
+
+      // Resolve PID for the package
+      const pid = await adbService.getPidForPackage(serial, packageName);
+      if (pid) {
+        logcatProvider.setPackageFilter(packageName, pid);
+        vscode.window.showInformationMessage(`Filtering logcat by ${packageName} (PID: ${pid})`);
+      } else {
+        logcatProvider.setPackageFilter(packageName);
+        vscode.window.showWarningMessage(
+          `Package ${packageName} is not running. Filtering by package name in tags only.`
+        );
       }
     })
   );

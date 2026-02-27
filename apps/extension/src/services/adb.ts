@@ -11,6 +11,16 @@ import {
   reboot,
   LogcatStream,
   clearLogcat,
+  pairDevice,
+  listMdnsServices,
+  isMdnsSupported,
+  enableTcpip,
+  listPackages,
+  getPidForPackage,
+  listFiles,
+  pullFile,
+  pushFile,
+  deleteFile,
   type Device,
   type LogcatEntry,
 } from "@android-devkit/adb";
@@ -61,6 +71,12 @@ export class AdbService {
 
   /**
    * Get Android SDK path
+   *
+   * Detection order:
+   * 1. Extension setting `androidDevkit.sdkPath`
+   * 2. ANDROID_HOME (current recommended env var)
+   * 3. ANDROID_SDK_ROOT (deprecated since cmdline-tools 7.0, still checked as fallback)
+   * 4. Platform-specific default install locations (Android Studio defaults)
    */
   private getSdkPath(): string | undefined {
     const config = vscode.workspace.getConfiguration("androidDevkit");
@@ -70,7 +86,8 @@ export class AdbService {
       return configuredPath;
     }
 
-    // Check environment variables
+    // ANDROID_HOME is the current standard (cmdline-tools 7.0+)
+    // ANDROID_SDK_ROOT is deprecated but widely used
     const envPaths = [
       process.env.ANDROID_HOME,
       process.env.ANDROID_SDK_ROOT,
@@ -82,16 +99,25 @@ export class AdbService {
       }
     }
 
-    // Check common locations
-    const home = process.env.HOME ?? "";
+    // Platform-specific default install locations
+    const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
+    const localAppData = process.env.LOCALAPPDATA ?? "";
     const commonPaths = [
-      path.join(home, "Android", "Sdk"),
+      // macOS (Android Studio default)
       path.join(home, "Library", "Android", "sdk"),
+      // Linux (Android Studio default)
+      path.join(home, "Android", "Sdk"),
+      // Windows (Android Studio default)
+      path.join(localAppData, "Android", "Sdk"),
+      // Homebrew on macOS
+      "/opt/homebrew/share/android-commandlinetools",
+      // System-wide installs
       "/usr/local/android-sdk",
+      "/opt/android-sdk",
     ];
 
     for (const p of commonPaths) {
-      if (fs.existsSync(p)) {
+      if (p && fs.existsSync(p)) {
         return p;
       }
     }
@@ -235,6 +261,92 @@ export class AdbService {
    */
   async clearLogcat(serial?: string): Promise<void> {
     await clearLogcat(this.getAdbPath(), serial);
+  }
+
+  /**
+   * Pair with a device for wireless debugging (Android 11+)
+   */
+  async pairDevice(host: string, port: number, pairingCode: string): Promise<string> {
+    const result = await pairDevice(this.client, host, port, pairingCode);
+    this._onDevicesChanged.fire();
+    return result;
+  }
+
+  /**
+   * Discover devices via mDNS
+   */
+  async listMdnsServices(): Promise<{ name: string; type: string; address: string }[]> {
+    return listMdnsServices(this.client);
+  }
+
+  /**
+   * Check if mDNS is supported
+   */
+  async isMdnsSupported(): Promise<boolean> {
+    return isMdnsSupported(this.client);
+  }
+
+  /**
+   * Enable TCP/IP mode on a USB-connected device
+   */
+  async enableTcpip(serial: string, port: number = 5555): Promise<string> {
+    return enableTcpip(this.client, serial, port);
+  }
+
+  /**
+   * List installed packages on a device
+   */
+  async listPackages(serial: string): Promise<string[]> {
+    return listPackages(this.client, serial);
+  }
+
+  /**
+   * Get PID of a running package
+   */
+  async getPidForPackage(serial: string, packageName: string): Promise<number | null> {
+    return getPidForPackage(this.client, serial, packageName);
+  }
+
+  /**
+   * List files on device
+   */
+  async listFiles(serial: string, remotePath: string) {
+    return listFiles(this.client, serial, remotePath);
+  }
+
+  /**
+   * Pull file from device
+   */
+  async pullFile(serial: string, remotePath: string, localPath: string): Promise<void> {
+    return pullFile(this.client, serial, remotePath, localPath);
+  }
+
+  /**
+   * Push file to device
+   */
+  async pushFile(serial: string, localPath: string, remotePath: string): Promise<void> {
+    return pushFile(this.client, serial, localPath, remotePath);
+  }
+
+  /**
+   * Delete file on device
+   */
+  async deleteRemoteFile(serial: string, remotePath: string, recursive: boolean = false): Promise<void> {
+    return deleteFile(this.client, serial, remotePath, recursive);
+  }
+
+  /**
+   * Get the ADB path (exposed for shell terminal)
+   */
+  getAdbPathPublic(): string {
+    return this.getAdbPath();
+  }
+
+  /**
+   * Get the detected SDK path (exposed for settings)
+   */
+  getSdkPathPublic(): string | undefined {
+    return this.getSdkPath();
   }
 
   /**

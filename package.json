@@ -16,6 +16,7 @@
     "apps/*"
   ],
   "devDependencies": {
+    "@types/node": "^25.3.2",
     "typescript": "^5.7.0"
   }
 }

@@ -18,6 +18,11 @@ export type DeviceState =
 export type TransportType = "usb" | "local" | "any";
 
 /**
+ * How the device is connected
+ */
+export type ConnectionType = "usb" | "emulator" | "tcpip" | "wireless";
+
+/**
  * Represents an Android device connected via ADB
  */
 export interface Device {
@@ -35,6 +40,8 @@ export interface Device {
   transportId?: string;
   /** Whether this is an emulator */
   isEmulator: boolean;
+  /** How the device is connected */
+  connectionType: ConnectionType;
 }
 
 /**
