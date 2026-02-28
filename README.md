@@ -1,3 +1,5 @@
+![Android DevKit Icon](apps/extension/icon-128.png)
+
 # Android DevKit
 
 A comprehensive, open-source VS Code extension that brings the Android Studio experience to VS Code, enabling productive Android app development without the resource overhead of Android Studio.
@@ -77,33 +79,6 @@ Then install the generated `.vsix` file in VS Code.
 3. **Support Flutter/React Native** - Focus on native Kotlin/Java Android development
 4. **NDK/C++ support** - Keep scope manageable; native code devs likely need Android Studio
 5. **iOS development** - Android only
-
-## Roadmap
-
-### Milestone 1: Alpha (MVP) - Current
-- [x] Device Manager with basic actions
-- [x] Logcat viewer with filtering
-- [ ] Basic Gradle task runner
-
-### Milestone 2: Beta
-- [ ] Build variants support
-- [ ] Run configurations (install & launch)
-- [ ] Emulator management (list, launch, stop AVDs)
-- [ ] SDK Manager
-
-### Milestone 3: v1.0
-- [ ] Stable Kotlin LSP integration
-- [ ] Polished UI/UX
-- [ ] Comprehensive documentation
-
-### Milestone 4: Debugging
-- [ ] Android debug adapter
-- [ ] Breakpoints, watch, evaluate
-
-### Milestone 5: Beyond
-- [ ] Layout Inspector
-- [ ] APK Analyzer
-- [ ] Profiler integration
 
 ## Project Structure
 

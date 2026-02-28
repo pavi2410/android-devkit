@@ -1,0 +1,39 @@
+name: Publish Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build ADB package
+        run: bun run build
+        working-directory: packages/adb
+
+      - name: Package extension
+        run: bun run package
+        working-directory: apps/extension
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ env.VSCE_PAT != '' }}
+        run: bunx vsce publish --packagePath build/android-devkit-*.vsix
+        working-directory: apps/extension
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX
+        if: ${{ env.OVSX_TOKEN != '' }}
+        run: bunx ovsx publish build/android-devkit-*.vsix -p "$OVSX_TOKEN"
+        working-directory: apps/extension
+        env:
+          OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}

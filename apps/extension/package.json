@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "pavi2410",
   "license": "MIT",
+  "icon": "icon-128.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/pavi2410/android-devkit"
