@@ -8,7 +8,7 @@
       "options": {
         "cwd": "${workspaceFolder}/apps/extension"
       },
-      "dependsOn": ["build-adb"],
+      "dependsOn": ["build-packages", "build-webview"],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -16,19 +16,29 @@
       "problemMatcher": ["$tsc"]
     },
     {
-      "label": "build-adb",
+      "label": "build-packages",
       "type": "shell",
-      "command": "bun run build",
+      "command": "bun run --filter './packages/*' build",
       "options": {
-        "cwd": "${workspaceFolder}/packages/adb"
+        "cwd": "${workspaceFolder}"
       },
       "group": "build",
       "problemMatcher": ["$tsc"]
     },
     {
+      "label": "build-webview",
+      "type": "shell",
+      "command": "bun run build",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/webview-welcome"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "install-extension-pack",
       "type": "shell",
-      "command": "bun run package && code --profile Android-DevKit --install-extension apps/extension/build/android-devkit-0.1.0.vsix --install-extension apps/extension-pack/build/android-devkit-pack-0.1.0.vsix",
+      "command": "bun run package && code --profile Android-DevKit --install-extension apps/extension/build/android-devkit-0.2.0.vsix --install-extension apps/extension-pack/build/android-devkit-pack-0.1.0.vsix",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -42,7 +52,7 @@
       "options": {
         "cwd": "${workspaceFolder}/apps/extension"
       },
-      "dependsOn": ["build-adb"],
+      "dependsOn": ["build-packages", "build-webview"],
       "isBackground": true,
       "group": "build",
       "problemMatcher": {
