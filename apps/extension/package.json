@@ -429,7 +429,7 @@
         },
         "androidDevkit.logcat.maxLines": {
           "type": "number",
-          "default": 10000,
+          "default": 1e4,
           "description": "Maximum number of logcat lines to keep in memory"
         }
       }
@@ -449,8 +449,8 @@
     "@android-devkit/avd": "workspace:*"
   },
   "devDependencies": {
-    "@types/vscode": "^1.96.0",
-    "@vscode/vsce": "^3.2.0",
-    "esbuild": "^0.24.0"
+    "@types/vscode": "1.96.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.24.2"
   }
 }

@@ -13,9 +13,9 @@ function postMessage(msg: MessageToHost) {
 
 // ── Icons (inline SVG, thin-stroke style matching VS Code codicons feel) ──────
 
-function AndroidIcon({ className }: { className?: string }) {
+function AndroidIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
       <path d="M6.18 15.64a2.18 2.18 0 0 1-2.18-2.18V9.68a2.18 2.18 0 1 1 4.36 0v3.78a2.18 2.18 0 0 1-2.18 2.18m11.64 0a2.18 2.18 0 0 1-2.18-2.18V9.68a2.18 2.18 0 1 1 4.36 0v3.78a2.18 2.18 0 0 1-2.18 2.18M15.88 3.2l1.64-2.84a.34.34 0 1 0-.59-.34l-1.66 2.88A10.14 10.14 0 0 0 12 2.4c-1.16 0-2.27.21-3.27.5L7.07.02a.34.34 0 1 0-.59.34L8.12 3.2A9.81 9.81 0 0 0 3.64 9h16.72a9.81 9.81 0 0 0-4.48-5.8M9.5 6.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5m5 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5M4 10v8a2 2 0 0 0 2 2h1v3a1.5 1.5 0 0 0 3 0v-3h4v3a1.5 1.5 0 0 0 3 0v-3h1a2 2 0 0 0 2-2v-8H4z" />
     </svg>
   );
@@ -69,9 +69,9 @@ function GlobeIcon({ className }: { className?: string }) {
   );
 }
 
-function ChevronRightIcon({ className }: { className?: string }) {
+function ChevronRightIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor">
+    <svg className={className} style={style} viewBox="0 0 16 16" fill="currentColor">
       <path d="M10.072 8.024L5.715 3.667l.618-.62L11 7.716v.618L6.333 12.98l-.618-.62 4.357-4.336z" />
     </svg>
   );
