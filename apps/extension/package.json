@@ -6,6 +6,7 @@
   "publisher": "pavi2410",
   "license": "MIT",
   "icon": "icon-128.png",
+  "readme": "README.md",
   "repository": {
     "type": "git",
     "url": "https://github.com/pavi2410/android-devkit"
