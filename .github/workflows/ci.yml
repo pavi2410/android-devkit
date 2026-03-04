@@ -66,6 +66,16 @@ jobs:
         run: bun run build
         working-directory: apps/extension
 
+      - name: Package extension (dry-run)
+        run: bun run package
+        working-directory: apps/extension
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: apps/extension/build/*.vsix
+
   typecheck:
     name: Type-check
     runs-on: ubuntu-latest

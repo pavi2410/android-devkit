@@ -51,7 +51,6 @@ export class WelcomePanel {
     private readonly sdkService: SdkService
   ) {
     this.panel = panel;
-    this.panel.iconPath = new vscode.ThemeIcon("device-mobile");
     this.panel.webview.html = this.getHtml();
 
     this.panel.webview.onDidReceiveMessage(
