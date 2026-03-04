@@ -2,106 +2,117 @@
 
 # Android DevKit
 
-A comprehensive, open-source VS Code extension that brings the Android Studio experience to VS Code, enabling productive Android app development without the resource overhead of Android Studio.
+A comprehensive, open-source VS Code extension that brings the Android Studio experience to VS Code — device management, Logcat, SDK Manager, AVD Manager, and more.
 
 ## Features
 
 ### Device Manager
-- List connected devices and emulators via ADB
-- Show device details (model, Android version, API level)
-- Connect to devices over wireless ADB
-- Take screenshots
-- Reboot devices (normal, bootloader, recovery)
+- List connected devices and emulators via ADB with connection-type icons (USB, TCP/IP, wireless, emulator)
+- Wireless debugging — pair via mDNS (Android 11+) or TCP/IP mode
+- ADB shell in the integrated terminal
+- Screenshots, reboot (normal / bootloader / recovery)
+
+### Device File Explorer
+- Browse the full file system of any connected device
+- Upload, download, and delete files directly from the tree view
 
 ### Logcat Viewer
-- Real-time log streaming in the panel area
-- Filter by log level (Verbose, Debug, Info, Warning, Error, Fatal)
-- Filter by tag or message content
-- Color-coded output in the Output Channel
-- Clear logs, pause/resume streaming
+- Real-time log streaming in the VS Code panel
+- Filter by level, tag/message text, or package name
+- Color-coded via VS Code's native `LogOutputChannel`
+
+### SDK Manager
+- List all installed and available SDK packages grouped by category
+- Install, uninstall, and update packages via `sdkmanager`
+- Output streamed to a dedicated output channel
+
+### AVD Manager
+- List Android Virtual Devices with live running-state detection (polls `adb devices`)
+- Create AVDs via a 3-step quick-pick wizard (system image → device profile → name)
+- Launch, delete, and wipe AVDs
+
+### Welcome & Setup
+- Auto-shown on first activation if SDK is not detected
+- SDK path detection with a guided setup for first-time users
 
 ## Installation
 
+### From VS Code Marketplace
+
+Search for **Android DevKit** in the Extensions panel, or install the [Android DevKit Extension Pack](https://marketplace.visualstudio.com/items?itemName=pavi2410.android-devkit-pack) to get a curated set of Android development extensions.
+
 ### From Source
+
 ```bash
-# Clone the repository
 git clone https://github.com/pavi2410/android-devkit.git
 cd android-devkit
 
-# Install dependencies
 bun install
 
-# Build
-bun run build
+# Build all packages + webview + extension
+mise run build
 
-# Package the extension
-cd packages/extension
-bun run package
+# Package the VSIX
+mise run package
 ```
 
-Then install the generated `.vsix` file in VS Code.
+> Requires [mise](https://mise.jdx.dev/) and [Bun](https://bun.sh/).
+
+Then install the generated `.vsix` from `apps/extension/build/`.
 
 ### Prerequisites
-- Android SDK with `adb` in PATH (or configure `androidDevkit.adbPath`)
-- Node.js 18+ (for development)
-
-## Usage
-
-1. Open a folder containing an Android project (with `build.gradle` or `AndroidManifest.xml`)
-2. The extension activates automatically
-3. Click the Android DevKit icon in the Activity Bar to see connected devices
-4. Open the Logcat panel (next to Terminal) to view logs
+- Android SDK (auto-detected from `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or Android Studio install paths)
+- `adb` accessible (bundled in `platform-tools`)
 
 ## Configuration
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `androidDevkit.adbPath` | Path to ADB executable | Auto-detect |
-| `androidDevkit.sdkPath` | Path to Android SDK | Auto-detect |
+| `androidDevkit.adbPath` | Path to `adb` executable | Auto-detect |
+| `androidDevkit.sdkPath` | Path to Android SDK root | Auto-detect |
 | `androidDevkit.logcat.defaultFilter` | Default logcat filter | (empty) |
-| `androidDevkit.logcat.maxLines` | Max logcat lines in memory | 10000 |
-
----
-
-## Goals
-
-1. **Device & Emulator Management** - List devices, launch emulators, view device info
-2. **Logcat Viewer** - Real-time log streaming with filtering, search, and color coding
-3. **Build & Run** - Gradle sync, build, install, and run with build variant selection
-4. **SDK Manager** - Install/update SDK platforms, build-tools, and system images
-5. **Code Intelligence** - Leverage Kotlin LSP for navigation, completion, and refactoring
-6. **Debugging** - Native Android debugging with breakpoints, watch, and evaluate
-
-## Non-Goals
-
-1. **Replace IntelliJ/Android Studio entirely** - Some advanced features (Compose Preview, Layout Editor) depend heavily on JetBrains infrastructure
-2. **Build a new Kotlin language server** - Leverage JetBrains' official Kotlin LSP instead
-3. **Support Flutter/React Native** - Focus on native Kotlin/Java Android development
-4. **NDK/C++ support** - Keep scope manageable; native code devs likely need Android Studio
-5. **iOS development** - Android only
+| `androidDevkit.logcat.maxLines` | Max logcat entries in memory | `10000` |
 
 ## Project Structure
 
 ```
 android-devkit/
+├── mise.toml                        # Task runner (build, dev, package, test)
 ├── packages/
-│   ├── adb/                  # @android-devkit/adb - ADB wrapper library
+│   ├── adb/                         # @android-devkit/adb  — ADB wrapper
+│   ├── sdk/                         # @android-devkit/sdk  — sdkmanager wrapper
+│   └── avd/                         # @android-devkit/avd  — avdmanager + emulator wrapper
+├── apps/
+│   ├── extension/                   # VS Code extension
 │   │   └── src/
-│   │       ├── client.ts     # ADB command execution
-│   │       ├── devices.ts    # Device management
-│   │       ├── logcat.ts     # Log streaming
-│   │       └── types.ts      # Type definitions
-│   │
-│   └── extension/            # VS Code extension
-│       └── src/
-│           ├── extension.ts  # Entry point
-│           ├── commands/     # Command handlers
-│           ├── views/        # TreeView providers
-│           └── services/     # Business logic
-│
-├── package.json              # Bun workspaces config
-└── tsconfig.base.json        # Shared TypeScript config
+│   │       ├── extension.ts         # Entry point
+│   │       ├── commands/            # Command handlers
+│   │       ├── views/               # TreeView providers
+│   │       ├── services/            # AdbService, SdkService
+│   │       └── webviews/            # WelcomePanel host
+│   ├── webview-welcome/             # Welcome page (Vite + React + Tailwind)
+│   └── extension-pack/              # VS Code extension pack
+├── package.json                     # Bun workspaces config
+└── tsconfig.base.json               # Shared TypeScript config
 ```
+
+## Goals
+
+1. **Device & Emulator Management** — List devices, launch emulators, ADB shell
+2. **Logcat Viewer** — Real-time streaming with filtering and color coding
+3. **SDK Manager** — Install/update SDK platforms, build-tools, system images
+4. **AVD Manager** — Create and manage Android Virtual Devices
+5. **Build & Run** — Gradle sync, build, install, run *(upcoming)*
+6. **Code Intelligence** — Kotlin LSP integration *(upcoming)*
+7. **Debugging** — Android debug adapter with breakpoints *(upcoming)*
+
+## Non-Goals
+
+1. **Replace Android Studio entirely** — Compose Preview, Layout Editor depend on JetBrains infrastructure
+2. **New Kotlin language server** — leverage the official Kotlin LSP
+3. **Flutter / React Native** — native Kotlin/Java Android only
+4. **NDK/C++ support** — out of scope
+5. **iOS development** — Android only
 
 ## Contributing
 

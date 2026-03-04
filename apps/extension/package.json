@@ -2,7 +2,7 @@
   "name": "android-devkit",
   "displayName": "Android DevKit",
   "description": "Comprehensive Android development tools for VS Code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "pavi2410",
   "license": "MIT",
   "icon": "icon-128.png",
@@ -29,6 +29,7 @@
     "emulator"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "workspaceContains:**/build.gradle",
     "workspaceContains:**/build.gradle.kts",
     "workspaceContains:**/settings.gradle",
@@ -43,6 +44,11 @@
           "id": "android-devkit",
           "title": "Android DevKit",
           "icon": "$(device-mobile)"
+        },
+        {
+          "id": "android-devkit-sdk",
+          "title": "Android SDK",
+          "icon": "$(package)"
         }
       ],
       "panel": [
@@ -67,6 +73,20 @@
           "icon": "$(folder)",
           "contextualTitle": "Device File Explorer",
           "visibility": "collapsed"
+        }
+      ],
+      "android-devkit-sdk": [
+        {
+          "id": "androidDevkit.sdkManager",
+          "name": "SDK Manager",
+          "icon": "$(package)",
+          "contextualTitle": "Android SDK Manager"
+        },
+        {
+          "id": "androidDevkit.avdManager",
+          "name": "AVD Manager",
+          "icon": "$(vm)",
+          "contextualTitle": "Android Virtual Devices"
         }
       ],
       "android-devkit-panel": [
@@ -186,6 +206,66 @@
         "title": "Show Android SDK Info",
         "icon": "$(info)",
         "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.openWelcome",
+        "title": "Welcome / Setup",
+        "icon": "$(home)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.refreshSdkPackages",
+        "title": "Refresh SDK Packages",
+        "icon": "$(refresh)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.installSdkPackage",
+        "title": "Install SDK Package",
+        "icon": "$(cloud-download)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.uninstallSdkPackage",
+        "title": "Uninstall SDK Package",
+        "icon": "$(trash)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.updateAllSdkPackages",
+        "title": "Update All SDK Packages",
+        "icon": "$(sync)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.refreshAvds",
+        "title": "Refresh AVDs",
+        "icon": "$(refresh)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.createAvd",
+        "title": "Create Virtual Device",
+        "icon": "$(add)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.launchAvd",
+        "title": "Launch Emulator",
+        "icon": "$(play)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.deleteAvd",
+        "title": "Delete Virtual Device",
+        "icon": "$(trash)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.wipeAvdData",
+        "title": "Wipe AVD Data",
+        "icon": "$(clear-all)",
+        "category": "Android DevKit"
       }
     ],
     "menus": {
@@ -234,6 +314,31 @@
           "command": "androidDevkit.refreshFileExplorer",
           "when": "view == androidDevkit.fileExplorer",
           "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.refreshSdkPackages",
+          "when": "view == androidDevkit.sdkManager",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.updateAllSdkPackages",
+          "when": "view == androidDevkit.sdkManager",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.installSdkPackage",
+          "when": "view == androidDevkit.sdkManager",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.refreshAvds",
+          "when": "view == androidDevkit.avdManager",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.createAvd",
+          "when": "view == androidDevkit.avdManager",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -276,6 +381,31 @@
           "command": "androidDevkit.deleteRemoteFile",
           "when": "view == androidDevkit.fileExplorer && viewItem =~ /file|directory/",
           "group": "9_danger"
+        },
+        {
+          "command": "androidDevkit.installSdkPackage",
+          "when": "view == androidDevkit.sdkManager && viewItem == sdkPackage.available",
+          "group": "inline"
+        },
+        {
+          "command": "androidDevkit.uninstallSdkPackage",
+          "when": "view == androidDevkit.sdkManager && viewItem == sdkPackage.installed",
+          "group": "9_danger"
+        },
+        {
+          "command": "androidDevkit.launchAvd",
+          "when": "view == androidDevkit.avdManager && viewItem == avd.stopped",
+          "group": "inline"
+        },
+        {
+          "command": "androidDevkit.deleteAvd",
+          "when": "view == androidDevkit.avdManager && viewItem =~ /avd\\./",
+          "group": "9_danger"
+        },
+        {
+          "command": "androidDevkit.wipeAvdData",
+          "when": "view == androidDevkit.avdManager && viewItem =~ /avd\\./",
+          "group": "2_actions"
         }
       ]
     },
@@ -313,7 +443,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@android-devkit/adb": "workspace:*"
+    "@android-devkit/adb": "workspace:*",
+    "@android-devkit/sdk": "workspace:*",
+    "@android-devkit/avd": "workspace:*"
   },
   "devDependencies": {
     "@types/vscode": "^1.96.0",

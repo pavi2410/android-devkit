@@ -2,32 +2,46 @@ import * as vscode from "vscode";
 import { DevicesTreeProvider } from "./views/devices";
 import { LogcatTreeProvider } from "./views/logcat";
 import { FileExplorerProvider } from "./views/file-explorer";
+import { SdkManagerProvider } from "./views/sdk-manager";
+import { AvdManagerProvider } from "./views/avd-manager";
 import { registerDeviceCommands } from "./commands/devices";
 import { registerLogcatCommands } from "./commands/logcat";
+import { registerSdkCommands } from "./commands/sdk";
+import { registerAvdCommands } from "./commands/avd";
 import { AdbService } from "./services/adb";
+import { SdkService } from "./services/sdk";
+import { WelcomePanel } from "./webviews/welcome";
 
 let adbService: AdbService;
+let sdkService: SdkService;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("Android DevKit is now active!");
 
-  // Initialize ADB service
-  adbService = new AdbService();
+  // Initialize services
+  sdkService = new SdkService();
+  adbService = new AdbService(sdkService);
 
   // Register tree views
   const devicesProvider = new DevicesTreeProvider(adbService);
   const logcatProvider = new LogcatTreeProvider(adbService);
   const fileExplorerProvider = new FileExplorerProvider(adbService);
+  const sdkManagerProvider = new SdkManagerProvider(sdkService);
+  const avdManagerProvider = new AvdManagerProvider(sdkService, adbService);
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("androidDevkit.devices", devicesProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.logcat", logcatProvider),
-    vscode.window.registerTreeDataProvider("androidDevkit.fileExplorer", fileExplorerProvider)
+    vscode.window.registerTreeDataProvider("androidDevkit.fileExplorer", fileExplorerProvider),
+    vscode.window.registerTreeDataProvider("androidDevkit.sdkManager", sdkManagerProvider),
+    vscode.window.registerTreeDataProvider("androidDevkit.avdManager", avdManagerProvider)
   );
 
   // Register commands
   registerDeviceCommands(context, adbService, devicesProvider, fileExplorerProvider);
   registerLogcatCommands(context, adbService, logcatProvider);
+  registerSdkCommands(context, sdkService, sdkManagerProvider);
+  registerAvdCommands(context, sdkService, avdManagerProvider);
 
   // File explorer commands
   context.subscriptions.push(
@@ -85,8 +99,22 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Welcome page command
+  context.subscriptions.push(
+    vscode.commands.registerCommand("androidDevkit.openWelcome", () => {
+      WelcomePanel.show(context, sdkService);
+    })
+  );
+
+  // Show welcome on first activation if SDK not found
+  const hasShownWelcome = context.globalState.get<boolean>("welcomeShown", false);
+  if (!hasShownWelcome) {
+    context.globalState.update("welcomeShown", true);
+    WelcomePanel.show(context, sdkService);
+  }
+
   // SDK status bar
-  const sdkPath = adbService.getSdkPathPublic();
+  const sdkPath = sdkService.getSdkPath();
   const sdkStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
   sdkStatusBar.command = "androidDevkit.showSdkInfo";
   if (sdkPath) {
@@ -94,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
     sdkStatusBar.tooltip = `Android SDK: ${sdkPath}`;
   } else {
     sdkStatusBar.text = "$(warning) Android SDK not found";
-    sdkStatusBar.tooltip = "Click to configure Android SDK path";
+    sdkStatusBar.tooltip = "Click to open setup";
   }
   sdkStatusBar.show();
   context.subscriptions.push(sdkStatusBar);
@@ -125,10 +153,13 @@ export function activate(context: vscode.ExtensionContext) {
       } else {
         const action = await vscode.window.showWarningMessage(
           "Android SDK not found. Set ANDROID_HOME or configure the SDK path.",
+          "Open Setup",
           "Set SDK Path",
           "Open Settings"
         );
-        if (action === "Set SDK Path") {
+        if (action === "Open Setup") {
+          vscode.commands.executeCommand("androidDevkit.openWelcome");
+        } else if (action === "Set SDK Path") {
           const uri = await vscode.window.showOpenDialog({
             canSelectFolders: true,
             canSelectFiles: false,
@@ -150,6 +181,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-  // Cleanup
   adbService?.dispose();
+  sdkService?.dispose();
 }

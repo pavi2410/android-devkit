@@ -2,6 +2,9 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import {
+  type SdkService
+} from "./sdk";
+import {
   AdbClient,
   getDevices,
   getDeviceName,
@@ -40,7 +43,7 @@ export class AdbService {
   readonly onDevicesChanged = this._onDevicesChanged.event;
   readonly onLogcatEntry = this._onLogcatEntry.event;
 
-  constructor() {
+  constructor(private sdkService: SdkService) {
     const adbPath = this.getAdbPath();
     this.client = new AdbClient({ adbPath });
   }
@@ -69,60 +72,8 @@ export class AdbService {
     return "adb";
   }
 
-  /**
-   * Get Android SDK path
-   *
-   * Detection order:
-   * 1. Extension setting `androidDevkit.sdkPath`
-   * 2. ANDROID_HOME (current recommended env var)
-   * 3. ANDROID_SDK_ROOT (deprecated since cmdline-tools 7.0, still checked as fallback)
-   * 4. Platform-specific default install locations (Android Studio defaults)
-   */
   private getSdkPath(): string | undefined {
-    const config = vscode.workspace.getConfiguration("androidDevkit");
-    const configuredPath = config.get<string>("sdkPath");
-
-    if (configuredPath && fs.existsSync(configuredPath)) {
-      return configuredPath;
-    }
-
-    // ANDROID_HOME is the current standard (cmdline-tools 7.0+)
-    // ANDROID_SDK_ROOT is deprecated but widely used
-    const envPaths = [
-      process.env.ANDROID_HOME,
-      process.env.ANDROID_SDK_ROOT,
-    ];
-
-    for (const envPath of envPaths) {
-      if (envPath && fs.existsSync(envPath)) {
-        return envPath;
-      }
-    }
-
-    // Platform-specific default install locations
-    const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
-    const localAppData = process.env.LOCALAPPDATA ?? "";
-    const commonPaths = [
-      // macOS (Android Studio default)
-      path.join(home, "Library", "Android", "sdk"),
-      // Linux (Android Studio default)
-      path.join(home, "Android", "Sdk"),
-      // Windows (Android Studio default)
-      path.join(localAppData, "Android", "Sdk"),
-      // Homebrew on macOS
-      "/opt/homebrew/share/android-commandlinetools",
-      // System-wide installs
-      "/usr/local/android-sdk",
-      "/opt/android-sdk",
-    ];
-
-    for (const p of commonPaths) {
-      if (p && fs.existsSync(p)) {
-        return p;
-      }
-    }
-
-    return undefined;
+    return this.sdkService.getSdkPath();
   }
 
   /**
@@ -342,9 +293,6 @@ export class AdbService {
     return this.getAdbPath();
   }
 
-  /**
-   * Get the detected SDK path (exposed for settings)
-   */
   getSdkPathPublic(): string | undefined {
     return this.getSdkPath();
   }
