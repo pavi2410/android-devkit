@@ -5,6 +5,10 @@ export type SdkPackageCategory =
   | "cmdline-tools"
   | "system-images"
   | "extras"
+  | "emulator"
+  | "ndk"
+  | "sources"
+  | "cmake"
   | "other";
 
 export interface SdkPackage {

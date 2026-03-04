@@ -8,6 +8,7 @@
     "package": "bun run --filter './apps/*' package",
     "dev": "bun run --filter 'android-devkit' dev",
     "test": "bun run --filter '*' test",
+    "typecheck": "bun run --filter '*' typecheck",
     "lint": "bunx oxlint",
     "clean": "bun run --filter '*' clean"
   },

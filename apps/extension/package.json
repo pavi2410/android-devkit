@@ -14,6 +14,9 @@
   "engines": {
     "vscode": "^1.96.0"
   },
+  "extensionDependencies": [
+    "vscjava.vscode-gradle"
+  ],
   "categories": [
     "Programming Languages",
     "Debuggers",
@@ -49,6 +52,11 @@
           "id": "android-devkit-sdk",
           "title": "Android SDK",
           "icon": "$(package)"
+        },
+        {
+          "id": "android-devkit-build",
+          "title": "Android Build",
+          "icon": "$(tools)"
         }
       ],
       "panel": [
@@ -95,6 +103,21 @@
           "name": "Logcat",
           "type": "tree",
           "contextualTitle": "Android Logcat"
+        }
+      ],
+      "android-devkit-build": [
+        {
+          "id": "androidDevkit.buildRun",
+          "name": "Build & Run",
+          "icon": "$(play)",
+          "contextualTitle": "Android Build & Run"
+        },
+        {
+          "id": "androidDevkit.gradleTasks",
+          "name": "Gradle Tasks",
+          "icon": "$(list-tree)",
+          "contextualTitle": "Gradle Tasks",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -266,6 +289,72 @@
         "title": "Wipe AVD Data",
         "icon": "$(clear-all)",
         "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.refreshGradleTasks",
+        "title": "Refresh Gradle Tasks",
+        "icon": "$(refresh)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.syncGradle",
+        "title": "Sync Gradle Project",
+        "icon": "$(sync)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.runGradleTask",
+        "title": "Run Gradle Task",
+        "icon": "$(play)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.cleanBuild",
+        "title": "Clean Build",
+        "icon": "$(trash)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.assembleBuild",
+        "title": "Assemble",
+        "icon": "$(package)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.selectBuildVariant",
+        "title": "Select Build Variant",
+        "icon": "$(symbol-enum)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.selectRunTarget",
+        "title": "Select Run Target Device",
+        "icon": "$(device-mobile)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.buildVariant",
+        "title": "Build",
+        "icon": "$(package)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.runOnDevice",
+        "title": "Run on Device",
+        "icon": "$(play)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.stopApp",
+        "title": "Stop App",
+        "icon": "$(debug-stop)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.installApk",
+        "title": "Install APK from File",
+        "icon": "$(cloud-download)",
+        "category": "Android DevKit"
       }
     ],
     "menus": {
@@ -339,6 +428,31 @@
           "command": "androidDevkit.createAvd",
           "when": "view == androidDevkit.avdManager",
           "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.refreshGradleTasks",
+          "when": "view == androidDevkit.gradleTasks",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.syncGradle",
+          "when": "view == androidDevkit.gradleTasks",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.cleanBuild",
+          "when": "view == androidDevkit.gradleTasks",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.runOnDevice",
+          "when": "view == androidDevkit.buildRun",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.stopApp",
+          "when": "view == androidDevkit.buildRun",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -406,6 +520,11 @@
           "command": "androidDevkit.wipeAvdData",
           "when": "view == androidDevkit.avdManager && viewItem =~ /avd\\./",
           "group": "2_actions"
+        },
+        {
+          "command": "androidDevkit.runGradleTask",
+          "when": "view == androidDevkit.gradleTasks && viewItem == gradleTask",
+          "group": "inline"
         }
       ]
     },
@@ -431,6 +550,11 @@
           "type": "number",
           "default": 1e4,
           "description": "Maximum number of logcat lines to keep in memory"
+        },
+        "androidDevkit.appPackage": {
+          "type": "string",
+          "default": "",
+          "description": "Android app package name (e.g. com.example.myapp). Leave empty to auto-detect from AndroidManifest.xml."
         }
       }
     }
@@ -451,6 +575,7 @@
   "devDependencies": {
     "@types/vscode": "1.96.0",
     "@vscode/vsce": "^3.7.1",
-    "esbuild": "^0.24.2"
+    "esbuild": "^0.27.3",
+    "vscode-gradle": "^3.10.1"
   }
 }

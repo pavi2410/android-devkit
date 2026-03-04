@@ -41,6 +41,10 @@ function detectCategory(id: string): SdkPackageCategory {
   if (id.startsWith("cmdline-tools;") || id === "cmdline-tools") return "cmdline-tools";
   if (id.startsWith("system-images;")) return "system-images";
   if (id.startsWith("extras;")) return "extras";
+  if (id === "emulator") return "emulator";
+  if (id.startsWith("ndk;") || id === "ndk-bundle") return "ndk";
+  if (id.startsWith("sources;")) return "sources";
+  if (id.startsWith("cmake;")) return "cmake";
   return "other";
 }
 
@@ -65,64 +69,86 @@ function parseDisplayName(id: string, rawDescription: string): string {
   return id;
 }
 
+interface RawPackage {
+  id: string;
+  version: string;
+  description: string;
+}
+
+function parseSection(lines: string[]): RawPackage[] {
+  const results: RawPackage[] = [];
+  let pastHeader = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!pastHeader && trimmed.startsWith("Path")) {
+      pastHeader = true;
+      continue;
+    }
+    if (trimmed.startsWith("---") || trimmed === "") continue;
+    const cols = line.split("|").map((c) => c.trim());
+    if (cols.length < 2) continue;
+    const id = cols[0];
+    if (!id || id.includes(" ")) continue;
+    results.push({ id, version: cols[1] ?? "", description: cols[2] ?? "" });
+  }
+  return results;
+}
+
 /**
  * Parse sdkmanager --list output into SdkPackage[].
  * The output format has two sections separated by a dashed line:
  *   Installed packages: and Available packages:
  */
 export function parseSdkManagerList(output: string): SdkPackage[] {
-  const packages: SdkPackage[] = [];
-  const seen = new Set<string>();
+  const allLines = output.split("\n");
 
-  let inInstalled = false;
-  let inAvailable = false;
-  let pastHeader = false;
+  // Split into section line arrays
+  const installedLines: string[] = [];
+  const availableLines: string[] = [];
+  let section: "none" | "installed" | "available" = "none";
 
-  for (const line of output.split("\n")) {
+  for (const line of allLines) {
     const trimmed = line.trim();
+    const trimmedLower = trimmed.toLowerCase();
+    if (trimmedLower.startsWith("installed packages:")) { section = "installed"; continue; }
+    if (trimmedLower.startsWith("available packages:") || trimmedLower.startsWith("available updates:")) { section = "available"; continue; }
+    if (section === "installed") installedLines.push(line);
+    else if (section === "available") availableLines.push(line);
+  }
 
-    if (trimmed.startsWith("Installed packages:")) {
-      inInstalled = true;
-      inAvailable = false;
-      pastHeader = false;
-      continue;
-    }
-    if (trimmed.startsWith("Available packages:") || trimmed.startsWith("Available Updates:")) {
-      inInstalled = false;
-      inAvailable = true;
-      pastHeader = false;
-      continue;
-    }
+  const installedRaw = parseSection(installedLines);
+  // Deduplicate by id — Available Updates entries can repeat ids from Available Packages
+  const availableMap = new Map<string, RawPackage>();
+  for (const p of parseSection(availableLines)) availableMap.set(p.id, p);
+  const availableRaw = [...availableMap.values()];
 
-    // Skip column header line (Path | Version | Description | Location)
-    if (!pastHeader && trimmed.startsWith("Path")) {
-      pastHeader = true;
-      continue;
-    }
-    // Skip separator line
-    if (trimmed.startsWith("---") || trimmed === "") continue;
+  const installedIds = new Map<string, RawPackage>(installedRaw.map((p) => [p.id, p]));
+  const availableIds = new Set(availableRaw.map((p) => p.id));
 
-    if (!inInstalled && !inAvailable) continue;
+  const packages: SdkPackage[] = [];
 
-    // Each package line: "  id  |  version  |  description  |  location?"
-    const cols = line.split("|").map((c) => c.trim());
-    if (cols.length < 2) continue;
-
-    const id = cols[0];
-    const version = cols[1] ?? "";
-    const description = cols[2] ?? "";
-
-    if (!id || id.includes(" ")) continue;
-    if (seen.has(id)) continue;
-    seen.add(id);
-
+  // Emit all available packages, marking installed ones
+  for (const p of availableRaw) {
     packages.push({
-      id,
-      displayName: parseDisplayName(id, description),
-      version,
-      installed: inInstalled,
-      category: detectCategory(id),
+      id: p.id,
+      displayName: parseDisplayName(p.id, p.description),
+      version: p.version,
+      installed: installedIds.has(p.id),
+      category: detectCategory(p.id),
     });
+  }
+
+  // Emit installed packages that don't appear in the available list
+  for (const p of installedRaw) {
+    if (!availableIds.has(p.id)) {
+      packages.push({
+        id: p.id,
+        displayName: parseDisplayName(p.id, p.description),
+        version: p.version,
+        installed: true,
+        category: detectCategory(p.id),
+      });
+    }
   }
 
   return packages;

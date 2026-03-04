@@ -4,16 +4,22 @@ import { LogcatTreeProvider } from "./views/logcat";
 import { FileExplorerProvider } from "./views/file-explorer";
 import { SdkManagerProvider } from "./views/sdk-manager";
 import { AvdManagerProvider } from "./views/avd-manager";
+import { GradleTasksProvider } from "./views/gradle-tasks";
+import { BuildRunProvider } from "./views/build-run";
 import { registerDeviceCommands } from "./commands/devices";
 import { registerLogcatCommands } from "./commands/logcat";
 import { registerSdkCommands } from "./commands/sdk";
 import { registerAvdCommands } from "./commands/avd";
+import { registerGradleCommands } from "./commands/gradle";
+import { registerRunCommands } from "./commands/run";
 import { AdbService } from "./services/adb";
 import { SdkService } from "./services/sdk";
+import { GradleService } from "./services/gradle";
 import { WelcomePanel } from "./webviews/welcome";
 
 let adbService: AdbService;
 let sdkService: SdkService;
+let gradleService: GradleService;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("Android DevKit is now active!");
@@ -21,6 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Initialize services
   sdkService = new SdkService();
   adbService = new AdbService(sdkService);
+  gradleService = new GradleService();
 
   // Register tree views
   const devicesProvider = new DevicesTreeProvider(adbService);
@@ -28,13 +35,17 @@ export function activate(context: vscode.ExtensionContext) {
   const fileExplorerProvider = new FileExplorerProvider(adbService);
   const sdkManagerProvider = new SdkManagerProvider(sdkService);
   const avdManagerProvider = new AvdManagerProvider(sdkService, adbService);
+  const gradleTasksProvider = new GradleTasksProvider(gradleService);
+  const buildRunProvider = new BuildRunProvider(gradleService, adbService, context);
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("androidDevkit.devices", devicesProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.logcat", logcatProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.fileExplorer", fileExplorerProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.sdkManager", sdkManagerProvider),
-    vscode.window.registerTreeDataProvider("androidDevkit.avdManager", avdManagerProvider)
+    vscode.window.registerTreeDataProvider("androidDevkit.avdManager", avdManagerProvider),
+    vscode.window.registerTreeDataProvider("androidDevkit.gradleTasks", gradleTasksProvider),
+    vscode.window.registerTreeDataProvider("androidDevkit.buildRun", buildRunProvider)
   );
 
   // Register commands
@@ -42,6 +53,8 @@ export function activate(context: vscode.ExtensionContext) {
   registerLogcatCommands(context, adbService, logcatProvider);
   registerSdkCommands(context, sdkService, sdkManagerProvider);
   registerAvdCommands(context, sdkService, avdManagerProvider);
+  registerGradleCommands(context, gradleService, gradleTasksProvider);
+  registerRunCommands(context, gradleService, adbService, buildRunProvider);
 
   // File explorer commands
   context.subscriptions.push(

@@ -12,6 +12,9 @@ import {
   getAndroidVersion,
   takeScreenshot,
   reboot,
+  installApk,
+  launchApp,
+  forceStopApp,
   LogcatStream,
   clearLogcat,
   pairDevice,
@@ -284,6 +287,27 @@ export class AdbService {
    */
   async deleteRemoteFile(serial: string, remotePath: string, recursive: boolean = false): Promise<void> {
     return deleteFile(this.client, serial, remotePath, recursive);
+  }
+
+  /**
+   * Install an APK on a device
+   */
+  async installApk(serial: string, apkPath: string): Promise<void> {
+    return installApk(this.client, serial, apkPath, { replace: true });
+  }
+
+  /**
+   * Launch an app on a device
+   */
+  async launchApp(serial: string, packageName: string, activity?: string): Promise<void> {
+    return launchApp(this.client, serial, packageName, activity);
+  }
+
+  /**
+   * Force stop an app on a device
+   */
+  async forceStopApp(serial: string, packageName: string): Promise<void> {
+    return forceStopApp(this.client, serial, packageName);
   }
 
   /**

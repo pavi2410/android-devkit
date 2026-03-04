@@ -12,11 +12,17 @@
 - [x] SDK Manager — list, install, uninstall, update packages via `sdkmanager`
 - [x] AVD Manager — create, launch, delete, wipe Android Virtual Devices via `avdmanager`
 
-## Milestone 3: Build & Run
-- [ ] Gradle task runner (sync, build, clean)
-- [ ] Build variants support
-- [ ] Run configurations (install APK & launch app)
-- [ ] APK installation from file picker
+## Milestone 3: Build & Run ✅
+- [x] Gradle task runner (sync, build, clean) — via `vscjava.vscode-gradle` API + `./gradlew` fallback
+- [x] Build variants support — auto-detected from `assemble*` tasks
+- [x] Run configurations (install APK & launch app) — Build / Run / Stop buttons with device picker
+- [x] APK installation from file picker
+- [x] App package auto-detection from `AndroidManifest.xml`
+
+### QoL Backlog (Milestone 3+)
+- [ ] Last-used device memory (persist selected device serial)
+- [ ] Gradle task search/filter in tree view
+- [ ] Additional `extensionDependencies` — `redhat.java`, `fwcd.kotlin`, `redhat.vscode-xml` (Milestone 4)
 
 ## Milestone 4: v1.0
 - [ ] Stable Kotlin LSP integration
