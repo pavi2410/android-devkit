@@ -44,7 +44,7 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--profile=Android-DevKit",
+        "--profile=Android-DevKit-Pack",
         "--extensionDevelopmentPath=${workspaceFolder}/apps/extension"
       ],
       "outFiles": [
