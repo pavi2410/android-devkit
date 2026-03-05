@@ -11,9 +11,9 @@ description = "Build all apps (webview first, then extension)"
 depends = ["build:webview", "build:extension"]
 
 [tasks."build:webview"]
-description = "Build the welcome webview"
+description = "Build the SDK Manager webview"
 run = "bun run build"
-dir = "apps/webview-welcome"
+dir = "apps/webview-sdk-manager"
 
 [tasks."build:extension"]
 description = "Build the VS Code extension"
@@ -25,9 +25,9 @@ description = "Watch mode for extension + webview in parallel"
 run = "bun run --filter './apps/*' dev"
 
 [tasks."dev:webview"]
-description = "Watch mode for the welcome webview"
+description = "Watch mode for the SDK Manager webview"
 run = "bun run dev"
-dir = "apps/webview-welcome"
+dir = "apps/webview-sdk-manager"
 
 [tasks."dev:extension"]
 description = "Watch mode for the VS Code extension"

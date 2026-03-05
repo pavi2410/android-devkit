@@ -12,7 +12,7 @@
     },
     "apps/extension": {
       "name": "android-devkit",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@android-devkit/adb": "workspace:*",
         "@android-devkit/avd": "workspace:*",
@@ -27,23 +27,6 @@
     },
     "apps/webview-sdk-manager": {
       "name": "@android-devkit/webview-sdk-manager",
-      "version": "0.1.0",
-      "dependencies": {
-        "react": "^19.2.4",
-        "react-dom": "^19.2.4",
-      },
-      "devDependencies": {
-        "@tailwindcss/vite": "^4.2.1",
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
-        "@vitejs/plugin-react": "^5.1.4",
-        "tailwindcss": "^4.2.1",
-        "typescript": "^5.9.3",
-        "vite": "^7.3.1",
-      },
-    },
-    "apps/webview-welcome": {
-      "name": "@android-devkit/webview-welcome",
       "version": "0.1.0",
       "dependencies": {
         "react": "^19.2.4",
@@ -89,8 +72,6 @@
     "@android-devkit/sdk": ["@android-devkit/sdk@workspace:packages/sdk"],
 
     "@android-devkit/webview-sdk-manager": ["@android-devkit/webview-sdk-manager@workspace:apps/webview-sdk-manager"],
-
-    "@android-devkit/webview-welcome": ["@android-devkit/webview-welcome@workspace:apps/webview-welcome"],
 
     "@azu/format-text": ["@azu/format-text@1.0.2", "", {}, "sha512-Swi4N7Edy1Eqq82GxgEECXSSLyn6GOb5htRFPzBDdUkECGXtlf12ynO5oJSpWKPwCaUssOu7NfhDcCWpIC6Ywg=="],
 

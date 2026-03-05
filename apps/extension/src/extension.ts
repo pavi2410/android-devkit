@@ -172,7 +172,7 @@ export function activate(context: vscode.ExtensionContext) {
           "Open Settings"
         );
         if (action === "Open Setup") {
-          vscode.commands.executeCommand("androidDevkit.openWelcome");
+          vscode.commands.executeCommand("androidDevkit.openSdkManager");
         } else if (action === "Set SDK Path") {
           const uri = await vscode.window.showOpenDialog({
             canSelectFolders: true,

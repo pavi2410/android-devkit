@@ -35,14 +35,14 @@ jobs:
         with:
           name: package-dists
           path: packages
-      - name: Build welcome webview
+      - name: Build SDK Manager webview
         run: bun run build
-        working-directory: apps/webview-welcome
+        working-directory: apps/webview-sdk-manager
       - name: Upload webview dist
         uses: actions/upload-artifact@v4
         with:
           name: webview-dist
-          path: apps/extension/dist/webview-welcome
+          path: apps/extension/dist/webview-sdk-manager
 
   build-extension:
     name: Build extension
@@ -61,7 +61,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: webview-dist
-          path: apps/extension/dist/webview-welcome
+          path: apps/extension/dist/webview-sdk-manager
       - name: Build extension
         run: bun run build
         working-directory: apps/extension
@@ -93,7 +93,7 @@ jobs:
         run: bun run --filter './packages/*' typecheck
       - name: Type-check webview
         run: bun run typecheck
-        working-directory: apps/webview-welcome
+        working-directory: apps/webview-sdk-manager
       - name: Type-check extension
         run: bun run typecheck
         working-directory: apps/extension

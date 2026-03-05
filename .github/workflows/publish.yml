@@ -19,9 +19,9 @@ jobs:
       - name: Build packages
         run: bun run --filter './packages/*' build
 
-      - name: Build welcome webview
+      - name: Build SDK Manager webview
         run: bun run build
-        working-directory: apps/webview-welcome
+        working-directory: apps/webview-sdk-manager
 
       - name: Package extension
         run: bun run package
