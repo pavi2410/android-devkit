@@ -8,18 +8,29 @@
 - [x] Android SDK auto-detection
 
 ## Milestone 2: SDK & Emulator Management ✅
-- [x] Welcome & setup page (Webview, Vite + React + Tailwind)
 - [x] SDK Manager — list, install, uninstall, update packages via `sdkmanager`
 - [x] AVD Manager — create, launch, delete, wipe Android Virtual Devices via `avdmanager`
 
-## Milestone 3: Build & Run ✅
-- [x] Gradle task runner (sync, build, clean) — via `vscjava.vscode-gradle` API + `./gradlew` fallback
-- [x] Build variants support — auto-detected from `assemble*` tasks
-- [x] Run configurations (install APK & launch app) — Build / Run / Stop buttons with device picker
-- [x] APK installation from file picker
+## Milestone 3: Build & Run, SDK Manager Redesign, UX ✅
+- [x] Gradle task runner (sync, build, clean) via `./gradlew` with `GradleTasksProvider` tree view
+- [x] Build variants — auto-detected from `assemble*` tasks
+- [x] Run on device — Build / Run / Stop with device picker; APK install from file picker
 - [x] App package auto-detection from `AndroidManifest.xml`
+- [x] SDK Manager rewritten as Android Studio-style webview (SDK Platforms / SDK Tools tabs)
+- [x] Checkbox-based batch install/uninstall with Apply button
+- [x] "Show Package Details" / "Hide Obsolete Packages" toggles
+- [x] Platform groups by API level with Android version name lookup (API 7–36.1)
+- [x] Tool groups by family (Build-Tools, NDK, CMake, etc.) with singleton detection
+- [x] Update availability + obsolete package detection from `sdkmanager --list`
+- [x] Android Project Layout tree view (module, source, resource navigation)
+- [x] Command Menu — status bar quick-pick for fast access to all views
+- [x] Terminal PATH injection — auto-prepend Android SDK tool dirs to new terminals
+- [x] Native VS Code walkthrough replacing custom Welcome webview
+- [x] AVD config parsing (`parseAvdConfig`, `readAvdConfig`, `AvdConfig` type)
+- [x] Test suites for SDK parser, AVD list, AVD config, device profiles (39 tests total)
+- [x] Extension pack removed in favor of standalone extension
 
-### QoL Backlog (Milestone 3+)
+### QoL Backlog
 - [ ] Last-used device memory (persist selected device serial via `ExtensionContext.globalState`)
 - [ ] Gradle task search/filter in tree view
 - [ ] Additional `extensionDependencies` — `redhat.java`, `fwcd.kotlin`, `redhat.vscode-xml` (Milestone 4)

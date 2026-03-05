@@ -22,24 +22,43 @@ A comprehensive, open-source VS Code extension that brings the Android Studio ex
 - Color-coded via VS Code's native `LogOutputChannel`
 
 ### SDK Manager
-- List all installed and available SDK packages grouped by category
-- Install, uninstall, and update packages via `sdkmanager`
+- Android Studio-style SDK Manager webview with two tabs: **SDK Platforms** and **SDK Tools**
+- Packages grouped by API level (platforms) and tool family (build-tools, NDK, CMake, etc.)
+- Checkbox-based batch install/uninstall with an **Apply** button
+- "Show Package Details" toggle to expand groups into individual packages
+- "Hide Obsolete Packages" toggle (on by default)
+- Update availability detection with version display
 - Output streamed to a dedicated output channel
 
 ### AVD Manager
 - List Android Virtual Devices with live running-state detection (polls `adb devices`)
 - Create AVDs via a 3-step quick-pick wizard (system image → device profile → name)
 - Launch, delete, and wipe AVDs
+- AVD config enrichment (display name, RAM, LCD, CPU, GPU, Play Store status)
 
-### Welcome & Setup
-- Auto-shown on first activation if SDK is not detected
-- SDK path detection with a guided setup for first-time users
+### Gradle Tasks
+- Tree view listing all Gradle tasks with inline run buttons
+- Sync, build, and clean actions in the view title bar
+
+### Build & Run
+- Build variants auto-detected from `assemble*` tasks
+- Run on device with device picker; Build / Run / Stop buttons
+- Install APK from file picker
+- App package auto-detection from `AndroidManifest.xml`
+
+### Android Project Layout
+- Tree view showing module structure, source sets, and resource navigation
+
+### Command Menu & UX
+- Status bar button (`Android DevKit`) opens a quick-pick menu for fast access to all views and actions
+- `Add Android SDK Tools to Terminal PATH` command auto-prepends `platform-tools`, `emulator`, `cmdline-tools` to new terminal sessions
+- Native VS Code walkthrough shown on first activation with guided onboarding steps
 
 ## Installation
 
 ### From VS Code Marketplace
 
-Search for **Android DevKit** in the Extensions panel, or install the [Android DevKit Extension Pack](https://marketplace.visualstudio.com/items?itemName=pavi2410.android-devkit-pack) to get a curated set of Android development extensions.
+Search for **Android DevKit** in the Extensions panel.
 
 ### From Source
 
@@ -86,12 +105,11 @@ android-devkit/
 │   ├── extension/                   # VS Code extension
 │   │   └── src/
 │   │       ├── extension.ts         # Entry point
-│   │       ├── commands/            # Command handlers
-│   │       ├── views/               # TreeView providers
-│   │       ├── services/            # AdbService, SdkService
-│   │       └── webviews/            # WelcomePanel host
-│   ├── webview-welcome/             # Welcome page (Vite + React + Tailwind)
-│   └── extension-pack/              # VS Code extension pack
+│   │       ├── commands/            # Command handlers (devices, sdk, avd, gradle, run, command-menu)
+│   │       ├── views/               # TreeView providers (devices, logcat, files, avd, gradle, build-run, project-layout)
+│   │       ├── services/            # AdbService, SdkService, GradleService, terminal-env
+│   │       └── webviews/            # Webview panel hosts (SDK Manager)
+│   └── webview-sdk-manager/         # SDK Manager webview (Vite + React + Tailwind)
 ├── package.json                     # Bun workspaces config
 └── tsconfig.base.json               # Shared TypeScript config
 ```
@@ -100,9 +118,9 @@ android-devkit/
 
 1. **Device & Emulator Management** — List devices, launch emulators, ADB shell
 2. **Logcat Viewer** — Real-time streaming with filtering and color coding
-3. **SDK Manager** — Install/update SDK platforms, build-tools, system images
+3. **SDK Manager** — Android Studio-style SDK management with batch operations
 4. **AVD Manager** — Create and manage Android Virtual Devices
-5. **Build & Run** — Gradle sync, build, install, run *(upcoming)*
+5. **Build & Run** — Gradle tasks, build variants, run on device, install APK
 6. **Code Intelligence** — Kotlin LSP integration *(upcoming)*
 7. **Debugging** — Android debug adapter with breakpoints *(upcoming)*
 

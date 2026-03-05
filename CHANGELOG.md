@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.3.0] - 2026-03-06
+
+### Added
+- **Gradle Task Runner** — sync, build, clean via `./gradlew`; new `GradleService`, `GradleTasksProvider` tree view with inline run buttons
+- **Build & Run** — build variants auto-detected from `assemble*` tasks; run on device with device picker; stop app; install APK from file picker; app package auto-detection from `AndroidManifest.xml`
+- **Android Project Layout** — tree view showing module structure, source sets, and resource navigation (`ProjectLayoutProvider`)
+- **Command Menu** — status bar quick-pick menu (`$(device-mobile) Android DevKit`) for fast access to all major views and actions
+- **Terminal PATH injection** — `Add Android SDK Tools to Terminal PATH` command; auto-prepends `platform-tools`, `emulator`, `cmdline-tools/latest/bin` to new terminal sessions
+- **SDK Manager webview** — Android Studio-style layout with two tabs (SDK Platforms / SDK Tools), checkbox-based batch install/uninstall with Apply button, "Show Package Details" and "Hide Obsolete Packages" toggles, collapsible groups, update availability display
+- **Getting Started walkthrough** — native VS Code walkthrough with 5 guided steps (Configure SDK, Explore Devices, Open SDK Manager, Create AVD, View Logcat); shown on first activation
+- **SDK parser enrichment** — `installedVersion`, `availableVersion`, `obsolete` fields on `SdkPackage`; parses "Available Updates" and "Available Obsolete Packages" sections from `sdkmanager --list`
+- **AVD config parsing** — new `parseAvdConfig()`, `readAvdConfig()` functions and `AvdConfig` type; AVDs enriched with config.ini data (display name, RAM, LCD, CPU, GPU, Play Store, etc.)
+- **AVD parser improvements** — better API level extraction with multiple fallback patterns; inline `Tag/ABI:` parsing from `Based on:` line; `sdcard` field on `Avd` type
+- **ADB service** — `installApk()`, `launchApp()`, `forceStopApp()` methods
+- **Logcat** — view icon added to sidebar panel
+- **Test suites** — `parseSdkManagerList` (11 tests), `parseAvdList` (9 tests), `parseAvdConfig` (11 tests), `parseDeviceProfiles` (8 tests) with fixture files
+
+### Changed
+- SDK Manager tree view replaced with webview panel; tree provider retained for category-sorted fallback
+- SDK Manager packages sorted descending by API level / version
+- Welcome webview replaced by native VS Code walkthrough
+- Status bar changed from SDK path indicator to Command Menu button
+- Output channel names prefixed with `ADK:` (e.g. `ADK: Logcat`, `ADK: SDK Manager`)
+- Gradle switched to terminal task runner with rich console output
+- `NoSdkItem` commands in SDK Manager and AVD Manager tree views link to `showSdkInfo` instead of removed Welcome page
+- `registerSdkCommands` no longer depends on `SdkManagerProvider`
+- Device profile parser OEM field extraction uses regex for flexible whitespace
+
+### Removed
+- `apps/extension-pack/` — VS Code extension pack (in favor of standalone extension)
+- `apps/webview-welcome/` — custom Welcome webview (replaced by walkthrough)
+- `androidDevkit.openWelcome` command
+- `androidDevkit.sdkManager` tree view from sidebar (replaced by webview panel)
+- SDK Manager context menu items (`installSdkPackage`, `uninstallSdkPackage` inline/context actions)
+
 ## [0.2.0] - 2026-03-04
 
 ### Added
