@@ -1,0 +1,217 @@
+import * as vscode from "vscode";
+import * as path from "node:path";
+import * as fs from "node:fs";
+import type { SdkService } from "../services/sdk";
+
+type MessageToHost =
+  | { type: "ready" }
+  | { type: "refresh" }
+  | { type: "install"; id: string }
+  | { type: "uninstall"; id: string }
+  | { type: "updateAll" };
+
+type MessageToWebview =
+  | { type: "packages"; packages: unknown[]; loading: boolean }
+  | { type: "installing"; id: string }
+  | { type: "installed"; id: string; success: boolean; error?: string }
+  | { type: "uninstalling"; id: string }
+  | { type: "uninstalled"; id: string; success: boolean; error?: string }
+  | { type: "updatingAll" }
+  | { type: "updatedAll"; success: boolean; error?: string };
+
+export class SdkManagerPanel {
+  static readonly viewType = "androidDevkit.sdkManagerPage";
+  private static instance: SdkManagerPanel | undefined;
+
+  private readonly panel: vscode.WebviewPanel;
+  private readonly outputChannel: vscode.OutputChannel;
+  private disposables: vscode.Disposable[] = [];
+
+  static show(
+    context: vscode.ExtensionContext,
+    sdkService: SdkService
+  ): SdkManagerPanel {
+    if (SdkManagerPanel.instance) {
+      SdkManagerPanel.instance.panel.reveal(vscode.ViewColumn.One);
+      return SdkManagerPanel.instance;
+    }
+
+    const panel = vscode.window.createWebviewPanel(
+      SdkManagerPanel.viewType,
+      "SDK Manager",
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        localResourceRoots: [
+          vscode.Uri.joinPath(context.extensionUri, "dist", "webview-sdk-manager"),
+        ],
+        retainContextWhenHidden: true,
+      }
+    );
+
+    SdkManagerPanel.instance = new SdkManagerPanel(panel, context, sdkService);
+    return SdkManagerPanel.instance;
+  }
+
+  private constructor(
+    panel: vscode.WebviewPanel,
+    private readonly context: vscode.ExtensionContext,
+    private readonly sdkService: SdkService
+  ) {
+    this.panel = panel;
+    this.panel.webview.html = this.getHtml();
+    this.outputChannel = vscode.window.createOutputChannel("ADK: SDK Manager");
+
+    this.panel.webview.onDidReceiveMessage(
+      (msg: MessageToHost) => this.handleMessage(msg),
+      undefined,
+      this.disposables
+    );
+
+    this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
+  }
+
+  private async handleMessage(msg: MessageToHost): Promise<void> {
+    switch (msg.type) {
+      case "ready":
+      case "refresh":
+        await this.loadPackages();
+        break;
+
+      case "install":
+        this.post({ type: "installing", id: msg.id });
+        try {
+          await this.sdkService.installPackage(msg.id, this.outputChannel);
+          this.post({ type: "installed", id: msg.id, success: true });
+          await this.loadPackages();
+        } catch (e: unknown) {
+          const error = e instanceof Error ? e.message : String(e);
+          this.post({ type: "installed", id: msg.id, success: false, error });
+          vscode.window.showErrorMessage(`Failed to install ${msg.id}: ${error}`);
+        }
+        break;
+
+      case "uninstall":
+        this.post({ type: "uninstalling", id: msg.id });
+        try {
+          await this.sdkService.uninstallPackage(msg.id, this.outputChannel);
+          this.post({ type: "uninstalled", id: msg.id, success: true });
+          await this.loadPackages();
+        } catch (e: unknown) {
+          const error = e instanceof Error ? e.message : String(e);
+          this.post({ type: "uninstalled", id: msg.id, success: false, error });
+          vscode.window.showErrorMessage(`Failed to uninstall ${msg.id}: ${error}`);
+        }
+        break;
+
+      case "updateAll":
+        this.post({ type: "updatingAll" });
+        try {
+          await this.sdkService.updateAll(this.outputChannel);
+          this.post({ type: "updatedAll", success: true });
+          await this.loadPackages();
+        } catch (e: unknown) {
+          const error = e instanceof Error ? e.message : String(e);
+          this.post({ type: "updatedAll", success: false, error });
+          vscode.window.showErrorMessage(`Failed to update packages: ${error}`);
+        }
+        break;
+    }
+  }
+
+  private async loadPackages(): Promise<void> {
+    this.post({ type: "packages", packages: [], loading: true });
+    try {
+      const packages = await this.sdkService.listSdkPackages();
+      this.post({ type: "packages", packages, loading: false });
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e);
+      this.post({ type: "packages", packages: [], loading: false });
+      vscode.window.showErrorMessage(`Failed to load SDK packages: ${error}`);
+    }
+  }
+
+  private post(msg: MessageToWebview): void {
+    this.panel.webview.postMessage(msg);
+  }
+
+  private getHtml(): string {
+    const webview = this.panel.webview;
+    const distDir = vscode.Uri.joinPath(
+      this.context.extensionUri,
+      "dist",
+      "webview-sdk-manager"
+    );
+
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(distDir, "index.js")
+    );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(distDir, "index.css")
+    );
+    const nonce = getNonce();
+
+    const distPath = path.join(
+      this.context.extensionUri.fsPath,
+      "dist",
+      "webview-sdk-manager"
+    );
+    const assetsExist = fs.existsSync(path.join(distPath, "index.js"));
+
+    if (!assetsExist) {
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDK Manager</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none';">
+  <style>
+    body { font-family: var(--vscode-font-family); color: var(--vscode-foreground);
+           background: var(--vscode-editor-background); padding: 2rem; }
+  </style>
+</head>
+<body>
+  <h2>SDK Manager — build required</h2>
+  <p>Run the build command to build the SDK Manager webview assets.</p>
+</body>
+</html>`;
+    }
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDK Manager</title>
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none';
+             style-src ${webview.cspSource} 'unsafe-inline';
+             script-src 'nonce-${nonce}';
+             img-src ${webview.cspSource} data:;
+             font-src ${webview.cspSource};" />
+  <link rel="stylesheet" href="${styleUri}" />
+</head>
+<body>
+  <div id="root"></div>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>`;
+  }
+
+  dispose(): void {
+    SdkManagerPanel.instance = undefined;
+    this.panel.dispose();
+    for (const d of this.disposables) d.dispose();
+    this.disposables = [];
+  }
+}
+
+function getNonce(): string {
+  let text = "";
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}

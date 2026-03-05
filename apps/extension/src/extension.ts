@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import { DevicesTreeProvider } from "./views/devices";
 import { LogcatTreeProvider } from "./views/logcat";
 import { FileExplorerProvider } from "./views/file-explorer";
-import { SdkManagerProvider } from "./views/sdk-manager";
 import { AvdManagerProvider } from "./views/avd-manager";
 import { GradleTasksProvider } from "./views/gradle-tasks";
 import { BuildRunProvider } from "./views/build-run";
@@ -17,6 +16,8 @@ import { AdbService } from "./services/adb";
 import { SdkService } from "./services/sdk";
 import { GradleService } from "./services/gradle";
 import { WelcomePanel } from "./webviews/welcome";
+import { SdkManagerPanel } from "./webviews/sdk-manager";
+import { registerCommandMenu } from "./commands/command-menu";
 import { applyTerminalEnv } from "./services/terminal-env";
 
 let adbService: AdbService;
@@ -35,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
   const devicesProvider = new DevicesTreeProvider(adbService);
   const logcatProvider = new LogcatTreeProvider(adbService);
   const fileExplorerProvider = new FileExplorerProvider(adbService);
-  const sdkManagerProvider = new SdkManagerProvider(sdkService);
+  // SDK Manager is now a webview — no tree provider needed
   const avdManagerProvider = new AvdManagerProvider(sdkService, adbService);
   const gradleTasksProvider = new GradleTasksProvider(gradleService);
   const buildRunProvider = new BuildRunProvider(gradleService, adbService, context);
@@ -45,7 +46,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider("androidDevkit.devices", devicesProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.logcat", logcatProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.fileExplorer", fileExplorerProvider),
-    vscode.window.registerTreeDataProvider("androidDevkit.sdkManager", sdkManagerProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.avdManager", avdManagerProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.gradleTasks", gradleTasksProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.buildRun", buildRunProvider),
@@ -58,10 +58,11 @@ export function activate(context: vscode.ExtensionContext) {
   // Register commands
   registerDeviceCommands(context, adbService, devicesProvider, fileExplorerProvider);
   registerLogcatCommands(context, adbService, logcatProvider);
-  registerSdkCommands(context, sdkService, sdkManagerProvider);
+  registerSdkCommands(context, sdkService);
   registerAvdCommands(context, sdkService, avdManagerProvider);
   registerGradleCommands(context, gradleService, gradleTasksProvider);
   registerRunCommands(context, gradleService, adbService, buildRunProvider);
+  registerCommandMenu(context);
 
   // File explorer commands
   context.subscriptions.push(
@@ -119,10 +120,13 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Welcome page command
+  // Welcome page & SDK Manager page commands
   context.subscriptions.push(
     vscode.commands.registerCommand("androidDevkit.openWelcome", () => {
       WelcomePanel.show(context, sdkService);
+    }),
+    vscode.commands.registerCommand("androidDevkit.openSdkManager", () => {
+      SdkManagerPanel.show(context, sdkService);
     })
   );
 
@@ -133,19 +137,13 @@ export function activate(context: vscode.ExtensionContext) {
     WelcomePanel.show(context, sdkService);
   }
 
-  // SDK status bar
-  const sdkPath = sdkService.getSdkPath();
-  const sdkStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-  sdkStatusBar.command = "androidDevkit.showSdkInfo";
-  if (sdkPath) {
-    sdkStatusBar.text = "$(check) Android SDK";
-    sdkStatusBar.tooltip = `Android SDK: ${sdkPath}`;
-  } else {
-    sdkStatusBar.text = "$(warning) Android SDK not found";
-    sdkStatusBar.tooltip = "Click to open setup";
-  }
-  sdkStatusBar.show();
-  context.subscriptions.push(sdkStatusBar);
+  // Command menu status bar button
+  const commandMenuStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
+  commandMenuStatusBar.command = "androidDevkit.commandMenu";
+  commandMenuStatusBar.text = "$(device-mobile) Android DevKit";
+  commandMenuStatusBar.tooltip = "Open Android DevKit command menu";
+  commandMenuStatusBar.show();
+  context.subscriptions.push(commandMenuStatusBar);
 
   // Show SDK info command
   context.subscriptions.push(

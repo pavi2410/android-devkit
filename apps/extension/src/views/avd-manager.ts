@@ -83,22 +83,39 @@ export class AvdItem extends vscode.TreeItem {
     public readonly avd: Avd,
     public readonly running: boolean
   ) {
-    super(avd.name.replace(/_/g, " "), vscode.TreeItemCollapsibleState.None);
+    const displayName = avd.config?.displayName ?? avd.name.replace(/_/g, " ");
+    super(displayName, vscode.TreeItemCollapsibleState.None);
 
     this.id = avd.name;
-    this.description = `${avd.target} · ${avd.abi}`;
-    this.contextValue = running ? "avd.running" : "avd.stopped";
 
+    const parts: string[] = [];
+    if (avd.api > 0) parts.push(`API ${avd.api}`);
+    if (avd.abi) parts.push(avd.abi);
+    this.description = parts.join(" · ");
+
+    this.contextValue = running ? "avd.running" : "avd.stopped";
     this.iconPath = new vscode.ThemeIcon(running ? "vm-running" : "vm");
 
-    this.tooltip = new vscode.MarkdownString(
-      `**${avd.name}**\n\n` +
-      `- Target: ${avd.target}\n` +
-      `- ABI: ${avd.abi}\n` +
-      (avd.device ? `- Device: ${avd.device}\n` : "") +
-      `- Path: \`${avd.path}\`\n` +
-      `- Status: ${running ? "🟢 Running" : "⬜ Stopped"}`
-    );
+    const config = avd.config;
+    const lines: string[] = [`**${displayName}**`, ""];
+    lines.push(`- Status: ${running ? "🟢 Running" : "⬜ Stopped"}`);
+    if (avd.api > 0) lines.push(`- API Level: ${avd.api}`);
+    if (avd.target) lines.push(`- Target: ${avd.target}`);
+    if (avd.abi) lines.push(`- ABI: ${avd.abi}`);
+    if (avd.device) lines.push(`- Device: ${avd.device}`);
+    if (config) {
+      if (config.lcdWidth && config.lcdHeight) {
+        lines.push(`- Resolution: ${config.lcdWidth}×${config.lcdHeight} (${config.lcdDensity ?? "?"}dpi)`);
+      }
+      if (config.ram) lines.push(`- RAM: ${config.ram}MB`);
+      if (config.cpuArch) lines.push(`- CPU: ${config.cpuArch}${config.cpuCores ? ` (${config.cpuCores} cores)` : ""}`);
+      if (config.gpuMode) lines.push(`- GPU: ${config.gpuMode}${config.gpuEnabled ? "" : " (disabled)"}`);
+      if (config.playStoreEnabled) lines.push(`- Play Store: Yes`);
+      if (config.sdcard) lines.push(`- SD Card: ${config.sdcard}`);
+    }
+    lines.push(`- Path: \`${avd.path}\``);
+
+    this.tooltip = new vscode.MarkdownString(lines.join("\n"));
   }
 }
 

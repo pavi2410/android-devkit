@@ -2,9 +2,9 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { Avd, DeviceProfile, CreateAvdOptions } from "./types.js";
+import type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions } from "./types.js";
 
-export type { Avd, DeviceProfile, CreateAvdOptions };
+export type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions };
 
 const execFileAsync = promisify(execFile);
 
@@ -53,16 +53,40 @@ export function parseAvdList(output: string): Avd[] {
       lines.find((l) => l.startsWith(prefix))?.slice(prefix.length).trim() ?? "";
 
     const name = get("Name: ");
-    const target = get("Based on: ");
-    const abi = get("Tag/ABI: ");
     const device = get("Device: ");
     const avdPath = get("Path: ");
+    const sdcard = get("Sdcard: ") || undefined;
 
-    const apiMatch = get("Based on: ").match(/API level (\d+)/);
-    const api = apiMatch ? parseInt(apiMatch[1], 10) : 0;
+    // "Based on:" line may contain "Tag/ABI:" inline
+    const basedOnRaw = get("Based on: ");
+    let target = basedOnRaw;
+    let abi = get("Tag/ABI: ");
+
+    // Handle "Based on: Android API 0 Tag/ABI: google_apis_playstore/arm64-v8a"
+    const tagAbiInline = basedOnRaw.match(/^(.+?)\s+Tag\/ABI:\s*(.+)$/);
+    if (tagAbiInline) {
+      target = tagAbiInline[1].trim();
+      if (!abi) abi = tagAbiInline[2].trim();
+    }
+
+    // Extract API level with multiple fallback patterns
+    let api = 0;
+    const apiPatterns = [
+      /API level (\d+)/,
+      /Android (\d+)/,
+      /API (\d+)/,
+      /android-(\d+(?:\.\d+)?)/,
+    ];
+    for (const pattern of apiPatterns) {
+      const match = basedOnRaw.match(pattern);
+      if (match) {
+        api = parseInt(match[1], 10);
+        if (api > 0) break;
+      }
+    }
 
     if (name) {
-      avds.push({ name, target, api, abi, device, path: avdPath });
+      avds.push({ name, target, api, abi, device, path: avdPath, sdcard });
     }
   }
 
@@ -87,8 +111,8 @@ export function parseDeviceProfiles(output: string): DeviceProfile[] {
     const nameLine = lines.find((l) => l.startsWith("Name:"));
     const name = nameLine?.slice("Name:".length).trim() ?? id;
 
-    const oemLine = lines.find((l) => l.startsWith("OEM:"));
-    const oem = oemLine?.slice("OEM:".length).trim() ?? "";
+    const oemLine = lines.find((l) => /^OEM\s*:/.test(l));
+    const oem = oemLine?.replace(/^OEM\s*:\s*/, "").trim() ?? "";
 
     if (id) {
       profiles.push({ id, name, oem });
@@ -96,6 +120,58 @@ export function parseDeviceProfiles(output: string): DeviceProfile[] {
   }
 
   return profiles;
+}
+
+/**
+ * Parse an AVD config.ini file content into AvdConfig.
+ */
+export function parseAvdConfig(content: string): AvdConfig {
+  const map = new Map<string, string>();
+  for (const line of content.split("\n")) {
+    const eqIdx = line.indexOf("=");
+    if (eqIdx === -1) continue;
+    const key = line.slice(0, eqIdx).trim();
+    const value = line.slice(eqIdx + 1).trim();
+    if (key) map.set(key, value);
+  }
+
+  const getStr = (key: string) => map.get(key) || undefined;
+  const getInt = (key: string) => {
+    const v = map.get(key);
+    return v ? parseInt(v, 10) : undefined;
+  };
+  const getBool = (key: string) => {
+    const v = map.get(key);
+    return v === "yes" || v === "true" ? true : v === "no" || v === "false" ? false : undefined;
+  };
+
+  return {
+    displayName: getStr("avd.ini.displayname"),
+    ram: getInt("hw.ramSize"),
+    vmHeap: getInt("vm.heapSize"),
+    sdcard: getStr("sdcard.size"),
+    lcdWidth: getInt("hw.lcd.width"),
+    lcdHeight: getInt("hw.lcd.height"),
+    lcdDensity: getInt("hw.lcd.density"),
+    cpuArch: getStr("hw.cpu.arch"),
+    cpuCores: getInt("hw.cpu.ncore"),
+    gpuEnabled: getBool("hw.gpu.enabled"),
+    gpuMode: getStr("hw.gpu.mode"),
+    playStoreEnabled: getBool("PlayStore.enabled"),
+    skin: getStr("skin.name"),
+    imageSysdir: getStr("image.sysdir.1"),
+    targetApi: getStr("target"),
+  };
+}
+
+/**
+ * Read and parse config.ini from an AVD directory.
+ */
+export function readAvdConfig(avdPath: string): AvdConfig | undefined {
+  const configPath = path.join(avdPath, "config.ini");
+  if (!fs.existsSync(configPath)) return undefined;
+  const content = fs.readFileSync(configPath, "utf-8");
+  return parseAvdConfig(content);
 }
 
 /**
@@ -111,7 +187,24 @@ export async function listAvds(sdkPath: string): Promise<Avd[]> {
     timeout: 30000,
   });
 
-  return parseAvdList(stdout);
+  const avds = parseAvdList(stdout);
+
+  // Enrich AVDs with config.ini data
+  for (const avd of avds) {
+    if (avd.path) {
+      const config = readAvdConfig(avd.path);
+      if (config) {
+        avd.config = config;
+        // Use config to fix API level if avdmanager reported 0
+        if (avd.api === 0 && config.targetApi) {
+          const apiMatch = config.targetApi.match(/android-(\d+)/);
+          if (apiMatch) avd.api = parseInt(apiMatch[1], 10);
+        }
+      }
+    }
+  }
+
+  return avds;
 }
 
 /**

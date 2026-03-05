@@ -58,13 +58,6 @@
           "title": "Android Build",
           "icon": "$(tools)"
         }
-      ],
-      "panel": [
-        {
-          "id": "android-devkit-panel",
-          "title": "Logcat",
-          "icon": "$(output)"
-        }
       ]
     },
     "views": {
@@ -84,6 +77,14 @@
           "contextualTitle": "Android Devices"
         },
         {
+          "id": "androidDevkit.logcat",
+          "name": "Logcat",
+          "icon": "$(output)",
+          "type": "tree",
+          "contextualTitle": "Android Logcat",
+          "visibility": "collapsed"
+        },
+        {
           "id": "androidDevkit.fileExplorer",
           "name": "Device Files",
           "icon": "$(folder)",
@@ -93,25 +94,10 @@
       ],
       "android-devkit-sdk": [
         {
-          "id": "androidDevkit.sdkManager",
-          "name": "SDK Manager",
-          "icon": "$(package)",
-          "contextualTitle": "Android SDK Manager"
-        },
-        {
           "id": "androidDevkit.avdManager",
           "name": "AVD Manager",
           "icon": "$(vm)",
           "contextualTitle": "Android Virtual Devices"
-        }
-      ],
-      "android-devkit-panel": [
-        {
-          "id": "androidDevkit.logcat",
-          "name": "Logcat",
-          "icon": "$(output)",
-          "type": "tree",
-          "contextualTitle": "Android Logcat"
         }
       ],
       "android-devkit-build": [
@@ -376,6 +362,18 @@
         "title": "Add Android SDK Tools to Terminal PATH",
         "icon": "$(terminal)",
         "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.commandMenu",
+        "title": "Command Menu",
+        "icon": "$(device-mobile)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.openSdkManager",
+        "title": "Open SDK Manager",
+        "icon": "$(package)",
+        "category": "Android DevKit"
       }
     ],
     "menus": {
@@ -428,21 +426,6 @@
         {
           "command": "androidDevkit.refreshFileExplorer",
           "when": "view == androidDevkit.fileExplorer",
-          "group": "navigation"
-        },
-        {
-          "command": "androidDevkit.refreshSdkPackages",
-          "when": "view == androidDevkit.sdkManager",
-          "group": "navigation"
-        },
-        {
-          "command": "androidDevkit.updateAllSdkPackages",
-          "when": "view == androidDevkit.sdkManager",
-          "group": "navigation"
-        },
-        {
-          "command": "androidDevkit.installSdkPackage",
-          "when": "view == androidDevkit.sdkManager",
           "group": "navigation"
         },
         {
@@ -520,16 +503,6 @@
         {
           "command": "androidDevkit.deleteRemoteFile",
           "when": "view == androidDevkit.fileExplorer && viewItem =~ /file|directory/",
-          "group": "9_danger"
-        },
-        {
-          "command": "androidDevkit.installSdkPackage",
-          "when": "view == androidDevkit.sdkManager && viewItem == sdkPackage.available",
-          "group": "inline"
-        },
-        {
-          "command": "androidDevkit.uninstallSdkPackage",
-          "when": "view == androidDevkit.sdkManager && viewItem == sdkPackage.installed",
           "group": "9_danger"
         },
         {

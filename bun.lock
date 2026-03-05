@@ -25,6 +25,23 @@
         "vscode-gradle": "^3.10.1",
       },
     },
+    "apps/webview-sdk-manager": {
+      "name": "@android-devkit/webview-sdk-manager",
+      "version": "0.1.0",
+      "dependencies": {
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+      },
+      "devDependencies": {
+        "@tailwindcss/vite": "^4.2.1",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^5.1.4",
+        "tailwindcss": "^4.2.1",
+        "typescript": "^5.9.3",
+        "vite": "^7.3.1",
+      },
+    },
     "apps/webview-welcome": {
       "name": "@android-devkit/webview-welcome",
       "version": "0.1.0",
@@ -70,6 +87,8 @@
     "@android-devkit/avd": ["@android-devkit/avd@workspace:packages/avd"],
 
     "@android-devkit/sdk": ["@android-devkit/sdk@workspace:packages/sdk"],
+
+    "@android-devkit/webview-sdk-manager": ["@android-devkit/webview-sdk-manager@workspace:apps/webview-sdk-manager"],
 
     "@android-devkit/webview-welcome": ["@android-devkit/webview-welcome@workspace:apps/webview-welcome"],
 

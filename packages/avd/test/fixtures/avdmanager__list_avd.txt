@@ -1,0 +1,7 @@
+Available Android Virtual Devices:
+    Name: Medium_Phone
+  Device: medium_phone (Generic)
+    Path: /Users/pavi2410/.android/avd/Medium_Phone.avd
+  Target: Google Play (Google Inc.)
+          Based on: Android API 0 Tag/ABI: google_apis_playstore/arm64-v8a
+  Sdcard: 512M

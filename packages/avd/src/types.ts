@@ -6,6 +6,25 @@ export interface Avd {
   device: string;
   path: string;
   sdcard?: string;
+  config?: AvdConfig;
+}
+
+export interface AvdConfig {
+  displayName?: string;
+  ram?: number;
+  vmHeap?: number;
+  sdcard?: string;
+  lcdWidth?: number;
+  lcdHeight?: number;
+  lcdDensity?: number;
+  cpuArch?: string;
+  cpuCores?: number;
+  gpuEnabled?: boolean;
+  gpuMode?: string;
+  playStoreEnabled?: boolean;
+  skin?: string;
+  imageSysdir?: string;
+  targetApi?: string;
 }
 
 export interface DeviceProfile {
