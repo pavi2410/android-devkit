@@ -6,6 +6,7 @@ import { SdkManagerProvider } from "./views/sdk-manager";
 import { AvdManagerProvider } from "./views/avd-manager";
 import { GradleTasksProvider } from "./views/gradle-tasks";
 import { BuildRunProvider } from "./views/build-run";
+import { ProjectLayoutProvider } from "./views/project-layout";
 import { registerDeviceCommands } from "./commands/devices";
 import { registerLogcatCommands } from "./commands/logcat";
 import { registerSdkCommands } from "./commands/sdk";
@@ -38,6 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
   const avdManagerProvider = new AvdManagerProvider(sdkService, adbService);
   const gradleTasksProvider = new GradleTasksProvider(gradleService);
   const buildRunProvider = new BuildRunProvider(gradleService, adbService, context);
+  const projectLayoutProvider = new ProjectLayoutProvider();
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("androidDevkit.devices", devicesProvider),
@@ -46,7 +48,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider("androidDevkit.sdkManager", sdkManagerProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.avdManager", avdManagerProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.gradleTasks", gradleTasksProvider),
-    vscode.window.registerTreeDataProvider("androidDevkit.buildRun", buildRunProvider)
+    vscode.window.registerTreeDataProvider("androidDevkit.buildRun", buildRunProvider),
+    vscode.window.registerTreeDataProvider("androidDevkit.projectLayout", projectLayoutProvider),
+    vscode.commands.registerCommand("androidDevkit.refreshProjectLayout", () => {
+      projectLayoutProvider.refresh();
+    })
   );
 
   // Register commands

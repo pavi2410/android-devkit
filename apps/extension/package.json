@@ -68,6 +68,14 @@
       ]
     },
     "views": {
+      "explorer": [
+        {
+          "id": "androidDevkit.projectLayout",
+          "name": "Android",
+          "icon": "$(device-mobile)",
+          "contextualTitle": "Android Project"
+        }
+      ],
       "android-devkit": [
         {
           "id": "androidDevkit.devices",
@@ -122,6 +130,12 @@
       ]
     },
     "commands": [
+      {
+        "command": "androidDevkit.refreshProjectLayout",
+        "title": "Refresh Android Project",
+        "icon": "$(refresh)",
+        "category": "Android DevKit"
+      },
       {
         "command": "androidDevkit.refreshDevices",
         "title": "Refresh Devices",
@@ -365,6 +379,11 @@
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "androidDevkit.refreshProjectLayout",
+          "when": "view == androidDevkit.projectLayout",
+          "group": "navigation"
+        },
         {
           "command": "androidDevkit.refreshDevices",
           "when": "view == androidDevkit.devices",
