@@ -7,7 +7,7 @@ export function registerGradleCommands(
   gradleService: GradleService,
   gradleTasksProvider: GradleTasksProvider
 ): void {
-  const outputChannel = vscode.window.createOutputChannel("Gradle");
+  const outputChannel = vscode.window.createOutputChannel("ADK: Gradle", "ansi");
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(

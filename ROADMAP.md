@@ -20,9 +20,16 @@
 - [x] App package auto-detection from `AndroidManifest.xml`
 
 ### QoL Backlog (Milestone 3+)
-- [ ] Last-used device memory (persist selected device serial)
+- [ ] Last-used device memory (persist selected device serial via `ExtensionContext.globalState`)
 - [ ] Gradle task search/filter in tree view
 - [ ] Additional `extensionDependencies` — `redhat.java`, `fwcd.kotlin`, `redhat.vscode-xml` (Milestone 4)
+- [ ] Uninstall app — wire up existing `uninstallPackage` ADB primitive as a command
+- [ ] Logcat export to file — save current buffer (with active filters) to a timestamped `.log`
+- [ ] Screenshot → clipboard — offer "Copy to Clipboard" after `takeScreenshot`
+- [ ] `getLogcat` one-shot snapshot — dump captured logcat to a new editor buffer
+- [ ] Multi-module Build & Run — pick assemble task from any module, not just root `app`
+- [ ] App data wiper — `adb shell pm clear <package>` as a right-click action
+- [ ] Device properties panel — expose `getDeviceProps` output in a read-only detail view
 
 ## Milestone 4: v1.0
 - [ ] Stable Kotlin LSP integration

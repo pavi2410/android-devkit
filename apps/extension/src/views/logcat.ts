@@ -16,7 +16,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private pidFilter?: number;
 
   constructor(private adbService: AdbService) {
-    this.outputChannel = vscode.window.createOutputChannel("Android Logcat", { log: true });
+    this.outputChannel = vscode.window.createOutputChannel("ADK: Logcat", { log: true });
     this.maxEntries = vscode.workspace.getConfiguration("androidDevkit").get("logcat.maxLines", 10000);
 
     // Listen for logcat entries

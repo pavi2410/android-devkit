@@ -8,7 +8,7 @@ export function registerSdkCommands(
   sdkService: SdkService,
   sdkManagerProvider: SdkManagerProvider
 ): void {
-  const outputChannel = vscode.window.createOutputChannel("Android SDK Manager");
+  const outputChannel = vscode.window.createOutputChannel("ADK: SDK Manager");
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(

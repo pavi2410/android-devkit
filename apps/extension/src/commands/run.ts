@@ -47,7 +47,7 @@ export function registerRunCommands(
   adbService: AdbService,
   buildRunProvider: BuildRunProvider
 ): void {
-  const outputChannel = vscode.window.createOutputChannel("Android Build & Run");
+  const outputChannel = vscode.window.createOutputChannel("ADK: Build & Run", "ansi");
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(
