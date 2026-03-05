@@ -51,11 +51,6 @@ export function registerCommandMenu(context: vscode.ExtensionContext): void {
           command: "workbench.action.openSettings",
         },
         {
-          label: "$(home) Welcome / Setup",
-          description: "Open setup page",
-          command: "androidDevkit.openWelcome",
-        },
-        {
           label: "$(info) Show SDK Info",
           description: "View Android SDK path and details",
           command: "androidDevkit.showSdkInfo",

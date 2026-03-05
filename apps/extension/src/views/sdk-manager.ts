@@ -106,7 +106,7 @@ class NoSdkItem extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon("warning");
     this.tooltip = "Configure androidDevkit.sdkPath or set ANDROID_HOME";
     this.command = {
-      command: "androidDevkit.openWelcome",
+      command: "androidDevkit.showSdkInfo",
       title: "Open Setup",
     };
   }

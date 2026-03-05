@@ -124,7 +124,7 @@ class NoSdkItem extends vscode.TreeItem {
     super("Android SDK not configured", vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon("warning");
     this.tooltip = "Configure androidDevkit.sdkPath or set ANDROID_HOME";
-    this.command = { command: "androidDevkit.openWelcome", title: "Open Setup" };
+    this.command = { command: "androidDevkit.showSdkInfo", title: "Open Setup" };
   }
 }
 

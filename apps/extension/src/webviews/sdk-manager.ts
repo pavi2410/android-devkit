@@ -8,7 +8,8 @@ type MessageToHost =
   | { type: "refresh" }
   | { type: "install"; id: string }
   | { type: "uninstall"; id: string }
-  | { type: "updateAll" };
+  | { type: "updateAll" }
+  | { type: "applyChanges"; install: string[]; uninstall: string[] };
 
 type MessageToWebview =
   | { type: "packages"; packages: unknown[]; loading: boolean }
@@ -116,13 +117,55 @@ export class SdkManagerPanel {
           vscode.window.showErrorMessage(`Failed to update packages: ${error}`);
         }
         break;
+
+      case "applyChanges":
+        await this.handleApplyChanges(msg.install, msg.uninstall);
+        break;
     }
+  }
+
+  private async handleApplyChanges(installIds: string[], uninstallIds: string[]): Promise<void> {
+    const total = installIds.length + uninstallIds.length;
+    const errors: string[] = [];
+
+    for (const id of installIds) {
+      this.post({ type: "installing", id });
+      try {
+        await this.sdkService.installPackage(id, this.outputChannel);
+        this.post({ type: "installed", id, success: true });
+      } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : String(e);
+        this.post({ type: "installed", id, success: false, error });
+        errors.push(`Install ${id}: ${error}`);
+      }
+    }
+
+    for (const id of uninstallIds) {
+      this.post({ type: "uninstalling", id });
+      try {
+        await this.sdkService.uninstallPackage(id, this.outputChannel);
+        this.post({ type: "uninstalled", id, success: true });
+      } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : String(e);
+        this.post({ type: "uninstalled", id, success: false, error });
+        errors.push(`Uninstall ${id}: ${error}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      vscode.window.showErrorMessage(`${errors.length} of ${total} operations failed. Check output for details.`);
+    } else {
+      vscode.window.showInformationMessage(`Applied ${total} change${total !== 1 ? "s" : ""} successfully.`);
+    }
+
+    await this.loadPackages();
   }
 
   private async loadPackages(): Promise<void> {
     this.post({ type: "packages", packages: [], loading: true });
     try {
       const packages = await this.sdkService.listSdkPackages();
+      packages.sort((a, b) => compareVersionsDesc(a.id, a.version, b.id, b.version));
       this.post({ type: "packages", packages, loading: false });
     } catch (e: unknown) {
       const error = e instanceof Error ? e.message : String(e);
@@ -205,6 +248,29 @@ export class SdkManagerPanel {
     for (const d of this.disposables) d.dispose();
     this.disposables = [];
   }
+}
+
+function extractApiLevel(id: string): number | null {
+  const match = id.match(/android-(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  return parseFloat(match[1]);
+}
+
+function compareVersionsDesc(idA: string, verA: string, idB: string, verB: string): number {
+  const apiA = extractApiLevel(idA);
+  const apiB = extractApiLevel(idB);
+  if (apiA !== null && apiB !== null && apiA !== apiB) {
+    return apiB - apiA;
+  }
+  const partsA = verA.split(".").map(Number);
+  const partsB = verB.split(".").map(Number);
+  const len = Math.max(partsA.length, partsB.length);
+  for (let i = 0; i < len; i++) {
+    const a = partsA[i] ?? 0;
+    const b = partsB[i] ?? 0;
+    if (b !== a) return b - a;
+  }
+  return 0;
 }
 
 function getNonce(): string {

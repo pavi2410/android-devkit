@@ -38,19 +38,6 @@
       "outFiles": [
         "${workspaceFolder}/apps/extension/dist/**/*.js"
       ]
-    },
-    {
-      "name": "Run Extension Pack",
-      "type": "extensionHost",
-      "request": "launch",
-      "args": [
-        "--profile=Android-DevKit-Pack",
-        "--extensionDevelopmentPath=${workspaceFolder}/apps/extension"
-      ],
-      "outFiles": [
-        "${workspaceFolder}/apps/extension/dist/**/*.js"
-      ],
-      "preLaunchTask": "install-extension-pack"
     }
   ]
 }

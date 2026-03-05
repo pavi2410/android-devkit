@@ -95,9 +95,31 @@ function parseSection(lines: string[]): RawPackage[] {
 }
 
 /**
+ * Parse the "Available Updates" section which has columns: ID | Installed | Available
+ */
+function parseUpdatesSection(lines: string[]): Map<string, { installed: string; available: string }> {
+  const results = new Map<string, { installed: string; available: string }>();
+  let pastHeader = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!pastHeader && (trimmed.startsWith("ID") || trimmed.startsWith("Path"))) {
+      pastHeader = true;
+      continue;
+    }
+    if (trimmed.startsWith("---") || trimmed === "") continue;
+    const cols = line.split("|").map((c) => c.trim());
+    if (cols.length < 3) continue;
+    const id = cols[0];
+    if (!id || id.includes(" ")) continue;
+    results.set(id, { installed: cols[1], available: cols[2] });
+  }
+  return results;
+}
+
+/**
  * Parse sdkmanager --list output into SdkPackage[].
- * The output format has two sections separated by a dashed line:
- *   Installed packages: and Available packages:
+ * Handles four sections: Installed packages, Available Packages,
+ * Available Obsolete Packages, and Available Updates.
  */
 export function parseSdkManagerList(output: string): SdkPackage[] {
   const allLines = output.split("\n");
@@ -105,50 +127,75 @@ export function parseSdkManagerList(output: string): SdkPackage[] {
   // Split into section line arrays
   const installedLines: string[] = [];
   const availableLines: string[] = [];
-  let section: "none" | "installed" | "available" = "none";
+  const obsoleteLines: string[] = [];
+  const updatesLines: string[] = [];
+  let section: "none" | "installed" | "available" | "obsolete" | "updates" = "none";
 
   for (const line of allLines) {
     const trimmed = line.trim();
     const trimmedLower = trimmed.toLowerCase();
     if (trimmedLower.startsWith("installed packages:")) { section = "installed"; continue; }
-    if (trimmedLower.startsWith("available packages:") || trimmedLower.startsWith("available updates:")) { section = "available"; continue; }
+    if (trimmedLower.startsWith("available packages:")) { section = "available"; continue; }
+    if (trimmedLower.startsWith("available obsolete packages:")) { section = "obsolete"; continue; }
+    if (trimmedLower.startsWith("available updates:")) { section = "updates"; continue; }
     if (section === "installed") installedLines.push(line);
     else if (section === "available") availableLines.push(line);
+    else if (section === "obsolete") obsoleteLines.push(line);
+    else if (section === "updates") updatesLines.push(line);
   }
 
   const installedRaw = parseSection(installedLines);
-  // Deduplicate by id — Available Updates entries can repeat ids from Available Packages
-  const availableMap = new Map<string, RawPackage>();
-  for (const p of parseSection(availableLines)) availableMap.set(p.id, p);
-  const availableRaw = [...availableMap.values()];
+  const availableRaw = parseSection(availableLines);
+  const obsoleteRaw = parseSection(obsoleteLines);
+  const updates = parseUpdatesSection(updatesLines);
 
-  const installedIds = new Map<string, RawPackage>(installedRaw.map((p) => [p.id, p]));
-  const availableIds = new Set(availableRaw.map((p) => p.id));
+  const installedMap = new Map<string, RawPackage>(installedRaw.map((p) => [p.id, p]));
+  const emittedIds = new Set<string>();
 
   const packages: SdkPackage[] = [];
 
-  // Emit all available packages, marking installed ones
+  // Emit all available (non-obsolete) packages, marking installed ones
   for (const p of availableRaw) {
+    emittedIds.add(p.id);
+    const update = updates.get(p.id);
+    const isInstalled = installedMap.has(p.id);
     packages.push({
       id: p.id,
       displayName: parseDisplayName(p.id, p.description),
       version: p.version,
-      installed: installedIds.has(p.id),
+      installed: isInstalled,
       category: detectCategory(p.id),
+      ...(update ? { installedVersion: update.installed, availableVersion: update.available } : {}),
     });
   }
 
-  // Emit installed packages that don't appear in the available list
+  // Emit obsolete packages
+  for (const p of obsoleteRaw) {
+    if (emittedIds.has(p.id)) continue;
+    emittedIds.add(p.id);
+    const isInstalled = installedMap.has(p.id);
+    packages.push({
+      id: p.id,
+      displayName: parseDisplayName(p.id, p.description),
+      version: p.version,
+      installed: isInstalled,
+      category: detectCategory(p.id),
+      obsolete: true,
+    });
+  }
+
+  // Emit installed packages that don't appear in available or obsolete lists
   for (const p of installedRaw) {
-    if (!availableIds.has(p.id)) {
-      packages.push({
-        id: p.id,
-        displayName: parseDisplayName(p.id, p.description),
-        version: p.version,
-        installed: true,
-        category: detectCategory(p.id),
-      });
-    }
+    if (emittedIds.has(p.id)) continue;
+    const update = updates.get(p.id);
+    packages.push({
+      id: p.id,
+      displayName: parseDisplayName(p.id, p.description),
+      version: p.version,
+      installed: true,
+      category: detectCategory(p.id),
+      ...(update ? { installedVersion: update.installed, availableVersion: update.available } : {}),
+    });
   }
 
   return packages;

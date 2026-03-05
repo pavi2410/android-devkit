@@ -17,6 +17,9 @@ export interface SdkPackage {
   version: string;
   installed: boolean;
   category: SdkPackageCategory;
+  installedVersion?: string;
+  availableVersion?: string;
+  obsolete?: boolean;
 }
 
 export type MessageToHost =
@@ -24,7 +27,8 @@ export type MessageToHost =
   | { type: "refresh" }
   | { type: "install"; id: string }
   | { type: "uninstall"; id: string }
-  | { type: "updateAll" };
+  | { type: "updateAll" }
+  | { type: "applyChanges"; install: string[]; uninstall: string[] };
 
 export type MessageToWebview =
   | { type: "packages"; packages: SdkPackage[]; loading: boolean }

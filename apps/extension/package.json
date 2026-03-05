@@ -232,12 +232,6 @@
         "category": "Android DevKit"
       },
       {
-        "command": "androidDevkit.openWelcome",
-        "title": "Welcome / Setup",
-        "icon": "$(home)",
-        "category": "Android DevKit"
-      },
-      {
         "command": "androidDevkit.refreshSdkPackages",
         "title": "Refresh SDK Packages",
         "icon": "$(refresh)",
@@ -556,7 +550,51 @@
           "description": "Android app package name (e.g. com.example.myapp). Leave empty to auto-detect from AndroidManifest.xml."
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "androidDevkit.getStarted",
+        "title": "Get Started with Android DevKit",
+        "description": "Set up your Android development environment in VS Code.",
+        "steps": [
+          {
+            "id": "configureSdk",
+            "title": "Configure Android SDK",
+            "description": "Android DevKit needs to know where your Android SDK is installed.\n\nIt will auto-detect from `ANDROID_HOME`, or you can set it manually in settings.\n\n[Set SDK Path](command:androidDevkit.showSdkInfo)",
+            "media": { "markdown": "media/walkthroughs/configureSdk.md" },
+            "completionEvents": ["onSettingChanged:androidDevkit.sdkPath"]
+          },
+          {
+            "id": "exploreDevices",
+            "title": "Explore Connected Devices",
+            "description": "View and manage your connected Android devices and emulators from the sidebar.\n\n[Open Device Manager](command:androidDevkit.devices.focus)",
+            "media": { "markdown": "media/walkthroughs/exploreDevices.md" },
+            "completionEvents": ["onView:androidDevkit.devices"]
+          },
+          {
+            "id": "openSdkManager",
+            "title": "Open SDK Manager",
+            "description": "Install and manage Android SDK platforms, build tools, system images, and more — just like in Android Studio.\n\n[Open SDK Manager](command:androidDevkit.openSdkManager)",
+            "media": { "markdown": "media/walkthroughs/openSdkManager.md" },
+            "completionEvents": ["onCommand:androidDevkit.openSdkManager"]
+          },
+          {
+            "id": "createAvd",
+            "title": "Create a Virtual Device",
+            "description": "Create, launch, and manage Android Virtual Devices (AVDs) for testing your apps.\n\n[Open AVD Manager](command:androidDevkit.avdManager.focus)",
+            "media": { "markdown": "media/walkthroughs/createAvd.md" },
+            "completionEvents": ["onView:androidDevkit.avdManager"]
+          },
+          {
+            "id": "viewLogcat",
+            "title": "View Logcat",
+            "description": "Stream real-time device logs to debug your apps.\n\n[Open Logcat](command:androidDevkit.logcat.focus)",
+            "media": { "markdown": "media/walkthroughs/viewLogcat.md" },
+            "completionEvents": ["onView:androidDevkit.logcat"]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "bun run build",

@@ -15,7 +15,6 @@ import { registerRunCommands } from "./commands/run";
 import { AdbService } from "./services/adb";
 import { SdkService } from "./services/sdk";
 import { GradleService } from "./services/gradle";
-import { WelcomePanel } from "./webviews/welcome";
 import { SdkManagerPanel } from "./webviews/sdk-manager";
 import { registerCommandMenu } from "./commands/command-menu";
 import { applyTerminalEnv } from "./services/terminal-env";
@@ -120,21 +119,18 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Welcome page & SDK Manager page commands
+  // SDK Manager page command
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.openWelcome", () => {
-      WelcomePanel.show(context, sdkService);
-    }),
     vscode.commands.registerCommand("androidDevkit.openSdkManager", () => {
       SdkManagerPanel.show(context, sdkService);
     })
   );
 
-  // Show welcome on first activation if SDK not found
-  const hasShownWelcome = context.globalState.get<boolean>("welcomeShown", false);
-  if (!hasShownWelcome) {
-    context.globalState.update("welcomeShown", true);
-    WelcomePanel.show(context, sdkService);
+  // Show walkthrough on first activation
+  const hasShownWalkthrough = context.globalState.get<boolean>("walkthroughShown", false);
+  if (!hasShownWalkthrough) {
+    context.globalState.update("walkthroughShown", true);
+    vscode.commands.executeCommand("workbench.action.openWalkthrough", "pavi2410.android-devkit#androidDevkit.getStarted");
   }
 
   // Command menu status bar button

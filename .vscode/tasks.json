@@ -8,7 +8,7 @@
       "options": {
         "cwd": "${workspaceFolder}/apps/extension"
       },
-      "dependsOn": ["build-packages", "build-webview"],
+      "dependsOn": ["build-packages", "build-webview-sdk-manager"],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -26,23 +26,13 @@
       "problemMatcher": ["$tsc"]
     },
     {
-      "label": "build-webview",
+      "label": "build-webview-sdk-manager",
       "type": "shell",
       "command": "bun run build",
       "options": {
-        "cwd": "${workspaceFolder}/apps/webview-welcome"
+        "cwd": "${workspaceFolder}/apps/webview-sdk-manager"
       },
       "group": "build",
-      "problemMatcher": []
-    },
-    {
-      "label": "install-extension-pack",
-      "type": "shell",
-      "command": "bun run package && code --profile Android-DevKit --install-extension apps/extension/build/android-devkit-0.2.0.vsix --install-extension apps/extension-pack/build/android-devkit-pack-0.1.0.vsix",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "dependsOn": ["build-extension"],
       "problemMatcher": []
     },
     {
@@ -52,7 +42,7 @@
       "options": {
         "cwd": "${workspaceFolder}/apps/extension"
       },
-      "dependsOn": ["build-packages", "build-webview"],
+      "dependsOn": ["build-packages", "build-webview-sdk-manager"],
       "isBackground": true,
       "group": "build",
       "problemMatcher": {

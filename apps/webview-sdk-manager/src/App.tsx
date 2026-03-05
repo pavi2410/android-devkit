@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import type { MessageToWebview, MessageToHost, SdkPackage, SdkPackageCategory } from "./types";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import type { MessageToWebview, MessageToHost, SdkPackage } from "./types";
 
 declare const acquireVsCodeApi: () => {
   postMessage: (msg: MessageToHost) => void;
@@ -11,63 +11,190 @@ function postMessage(msg: MessageToHost) {
   vscode?.postMessage(msg);
 }
 
-const CATEGORY_LABELS: Record<SdkPackageCategory, string> = {
-  platforms: "Platforms",
-  "build-tools": "Build Tools",
-  "platform-tools": "Platform Tools",
-  "cmdline-tools": "Command-line Tools",
-  "system-images": "System Images",
-  extras: "Extras",
-  emulator: "Emulator",
-  ndk: "NDK",
-  sources: "Sources",
-  cmake: "CMake",
-  other: "Other",
+/* ── Android version name lookup ─────────────────────────────────────────────── */
+
+const ANDROID_VERSION_NAMES: Record<string, string> = {
+  "36.1": 'Android 16.0 ("Baklava")',
+  "36": 'Android 16.0 ("Baklava")',
+  "35": 'Android 15.0 ("VanillaIceCream")',
+  "34": 'Android 14.0 ("UpsideDownCake")',
+  "33": 'Android 13.0 ("Tiramisu")',
+  "32": 'Android 12L ("Snow Cone v2")',
+  "31": 'Android 12.0 ("Snow Cone")',
+  "30": 'Android 11.0 ("Red Velvet Cake")',
+  "29": 'Android 10.0 ("Quince Tart")',
+  "28": 'Android 9.0 ("Pie")',
+  "27": 'Android 8.1 ("Oreo")',
+  "26": 'Android 8.0 ("Oreo")',
+  "25": 'Android 7.1 ("Nougat")',
+  "24": 'Android 7.0 ("Nougat")',
+  "23": 'Android 6.0 ("Marshmallow")',
+  "22": 'Android 5.1 ("Lollipop")',
+  "21": 'Android 5.0 ("Lollipop")',
+  "20": 'Android 4.4W ("KitKat Wear")',
+  "19": 'Android 4.4 ("KitKat")',
+  "18": 'Android 4.3 ("Jelly Bean")',
+  "17": 'Android 4.2 ("Jelly Bean")',
+  "16": 'Android 4.1 ("Jelly Bean")',
+  "15": 'Android 4.0.3 ("Ice Cream Sandwich")',
+  "14": 'Android 4.0 ("Ice Cream Sandwich")',
+  "13": 'Android 3.2 ("Honeycomb")',
+  "12": 'Android 3.1 ("Honeycomb")',
+  "11": 'Android 3.0 ("Honeycomb")',
+  "10": 'Android 2.3.3 ("Gingerbread")',
+  "9": 'Android 2.3 ("Gingerbread")',
+  "8": 'Android 2.2 ("Froyo")',
+  "7": 'Android 2.1 ("Eclair")',
+  Baklava: "Android Baklava Preview",
+  CinnamonBun: "Android CinnamonBun Preview",
+  CANARY: "Android CANARY Preview",
+  UpsideDownCake: "Android UpsideDownCake Preview",
 };
 
-const ALL_CATEGORIES: SdkPackageCategory[] = [
-  "platforms",
-  "build-tools",
-  "platform-tools",
-  "cmdline-tools",
-  "system-images",
-  "sources",
-  "emulator",
-  "ndk",
-  "cmake",
-  "extras",
-  "other",
-];
+/* ── Helpers ─────────────────────────────────────────────────────────────────── */
 
-type FilterMode = "all" | "installed" | "available";
+type Tab = "platforms" | "tools";
+
+const PLATFORM_CATEGORIES = new Set(["platforms", "system-images", "sources"]);
+const TOOL_FAMILIES: Record<string, string> = {
+  "build-tools": "Android SDK Build-Tools",
+  ndk: "NDK (Side by side)",
+  "ndk-bundle": "NDK",
+  cmake: "CMake",
+  "cmdline-tools": "Android SDK Command-line Tools",
+  extras: "Extras",
+};
+
+function extractApiKey(id: string): string | null {
+  const m = id.match(/android-([^;]+)/);
+  return m ? m[1] : null;
+}
+
+function apiKeyToSortNum(key: string): number {
+  const n = parseFloat(key);
+  return isNaN(n) ? -1 : n;
+}
+
+function getToolFamily(id: string): string {
+  if (id === "platform-tools") return "platform-tools";
+  if (id === "emulator") return "emulator";
+  if (id === "ndk-bundle") return "ndk-bundle";
+  const prefix = id.split(";")[0];
+  return prefix;
+}
+
+function getToolFamilyLabel(family: string): string {
+  if (family === "platform-tools") return "Android SDK Platform-Tools";
+  if (family === "emulator") return "Android Emulator";
+  return TOOL_FAMILIES[family] ?? family;
+}
+
+interface PlatformGroup {
+  apiKey: string;
+  label: string;
+  packages: SdkPackage[];
+}
+
+interface ToolGroup {
+  family: string;
+  label: string;
+  packages: SdkPackage[];
+  singleton: boolean;
+}
+
+function buildPlatformGroups(packages: SdkPackage[]): PlatformGroup[] {
+  const map = new Map<string, SdkPackage[]>();
+  for (const p of packages) {
+    if (!PLATFORM_CATEGORIES.has(p.category)) continue;
+    const key = extractApiKey(p.id) ?? "unknown";
+    const arr = map.get(key) ?? [];
+    arr.push(p);
+    map.set(key, arr);
+  }
+  const groups: PlatformGroup[] = [];
+  for (const [apiKey, pkgs] of map) {
+    const label = ANDROID_VERSION_NAMES[apiKey] ?? `Android API ${apiKey}`;
+    groups.push({ apiKey, label, packages: pkgs });
+  }
+  groups.sort((a, b) => {
+    const na = apiKeyToSortNum(a.apiKey);
+    const nb = apiKeyToSortNum(b.apiKey);
+    if (na !== -1 && nb !== -1) return nb - na;
+    if (na === -1 && nb === -1) return a.apiKey < b.apiKey ? 1 : -1;
+    return na === -1 ? -1 : 1;
+  });
+  return groups;
+}
+
+function buildToolGroups(packages: SdkPackage[]): ToolGroup[] {
+  const map = new Map<string, SdkPackage[]>();
+  for (const p of packages) {
+    if (PLATFORM_CATEGORIES.has(p.category)) continue;
+    const family = getToolFamily(p.id);
+    const arr = map.get(family) ?? [];
+    arr.push(p);
+    map.set(family, arr);
+  }
+  const singletonFamilies = new Set(["platform-tools", "emulator"]);
+  const groups: ToolGroup[] = [];
+  for (const [family, pkgs] of map) {
+    groups.push({
+      family,
+      label: getToolFamilyLabel(family),
+      packages: pkgs,
+      singleton: singletonFamilies.has(family) || pkgs.length === 1,
+    });
+  }
+  // Sort: singletons last, then alphabetical
+  groups.sort((a, b) => {
+    if (a.singleton !== b.singleton) return a.singleton ? 1 : -1;
+    return a.label.localeCompare(b.label);
+  });
+  return groups;
+}
+
+function hasRealUpdate(p: SdkPackage): boolean {
+  return !!p.availableVersion && p.availableVersion !== p.installedVersion;
+}
+
+function groupStatus(pkgs: SdkPackage[]): "installed" | "partial" | "not_installed" | "update" {
+  const installed = pkgs.filter((p) => p.installed).length;
+  const hasUpdate = pkgs.some(hasRealUpdate);
+  if (installed === 0) return "not_installed";
+  if (hasUpdate) return "update";
+  if (installed === pkgs.length) return "installed";
+  return "partial";
+}
+
+/* ── Main App ────────────────────────────────────────────────────────────────── */
 
 interface AppState {
   packages: SdkPackage[];
   loading: boolean;
-  search: string;
-  filterMode: FilterMode;
-  activeCategory: SdkPackageCategory | null;
   busyIds: Set<string>;
-  updatingAll: boolean;
+  applying: boolean;
 }
 
 export function App() {
   const [state, setState] = useState<AppState>({
     packages: [],
     loading: true,
-    search: "",
-    filterMode: "all",
-    activeCategory: null,
     busyIds: new Set(),
-    updatingAll: false,
+    applying: false,
   });
+  const [tab, setTab] = useState<Tab>("platforms");
+  const [showDetails, setShowDetails] = useState(false);
+  const [hideObsolete, setHideObsolete] = useState(true);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handler = (event: MessageEvent<MessageToWebview>) => {
       const msg = event.data;
       switch (msg.type) {
         case "packages":
-          setState((s) => ({ ...s, packages: msg.packages, loading: msg.loading }));
+          setState((s) => ({ ...s, packages: msg.packages, loading: msg.loading, applying: false }));
+          setChecked(new Set(msg.packages.filter((p) => p.installed).map((p) => p.id)));
           break;
         case "installing":
           setState((s) => ({ ...s, busyIds: new Set(s.busyIds).add(msg.id) }));
@@ -98,50 +225,62 @@ export function App() {
           break;
         }
         case "updatingAll":
-          setState((s) => ({ ...s, updatingAll: true }));
+          setState((s) => ({ ...s, applying: true }));
           break;
         case "updatedAll":
-          setState((s) => ({ ...s, updatingAll: false }));
+          setState((s) => ({ ...s, applying: false }));
           break;
       }
     };
-
     window.addEventListener("message", handler);
     postMessage({ type: "ready" });
     return () => window.removeEventListener("message", handler);
   }, []);
 
-  const categories = useMemo(() => {
-    const used = new Set(state.packages.map((p) => p.category));
-    return ALL_CATEGORIES.filter((c) => used.has(c));
+  const filteredPackages = useMemo(() => {
+    if (!hideObsolete) return state.packages;
+    return state.packages.filter((p) => !p.obsolete);
+  }, [state.packages, hideObsolete]);
+
+  const platformGroups = useMemo(() => buildPlatformGroups(filteredPackages), [filteredPackages]);
+  const toolGroups = useMemo(() => buildToolGroups(filteredPackages), [filteredPackages]);
+
+  // Pending changes
+  const pendingInstall = useMemo(() => {
+    return state.packages.filter((p) => !p.installed && checked.has(p.id)).map((p) => p.id);
+  }, [state.packages, checked]);
+  const pendingUninstall = useMemo(() => {
+    return state.packages.filter((p) => p.installed && !checked.has(p.id)).map((p) => p.id);
+  }, [state.packages, checked]);
+  const hasPendingChanges = pendingInstall.length > 0 || pendingUninstall.length > 0;
+
+  const handleApply = useCallback(() => {
+    if (!hasPendingChanges) return;
+    setState((s) => ({ ...s, applying: true }));
+    postMessage({ type: "applyChanges", install: pendingInstall, uninstall: pendingUninstall });
+  }, [hasPendingChanges, pendingInstall, pendingUninstall]);
+
+  const handleCancel = useCallback(() => {
+    setChecked(new Set(state.packages.filter((p) => p.installed).map((p) => p.id)));
   }, [state.packages]);
 
-  const filtered = useMemo(() => {
-    let pkgs = state.packages;
+  const toggleCheck = useCallback((id: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
-    if (state.activeCategory) {
-      pkgs = pkgs.filter((p) => p.category === state.activeCategory);
-    }
-
-    if (state.filterMode === "installed") {
-      pkgs = pkgs.filter((p) => p.installed);
-    } else if (state.filterMode === "available") {
-      pkgs = pkgs.filter((p) => !p.installed);
-    }
-
-    if (state.search) {
-      const q = state.search.toLowerCase();
-      pkgs = pkgs.filter(
-        (p) =>
-          p.displayName.toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q)
-      );
-    }
-
-    return pkgs;
-  }, [state.packages, state.activeCategory, state.filterMode, state.search]);
-
-  const installedCount = state.packages.filter((p) => p.installed).length;
+  const toggleExpand = useCallback((key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   if (state.loading && state.packages.length === 0) {
     return (
@@ -149,361 +288,453 @@ export function App() {
         className="flex items-center justify-center h-screen gap-2 text-sm"
         style={{ color: "var(--vscode-descriptionForeground)" }}
       >
-        <Spinner />
-        Loading SDK packages…
+        <Spinner /> Loading SDK packages…
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      {/* Toolbar */}
+    <div className="flex flex-col h-screen" style={{ color: "var(--vscode-foreground)" }}>
+      {/* Tab bar */}
       <div
-        className="sticky top-0 z-10 flex flex-wrap items-center gap-2 px-4 py-3 border-b"
+        className="flex items-center border-b"
         style={{
           backgroundColor: "var(--vscode-editor-background)",
           borderColor: "var(--vscode-panel-border)",
         }}
       >
-        {/* Search */}
-        <div className="relative flex-1 min-w-48">
-          <input
-            type="text"
-            placeholder="Search packages…"
-            value={state.search}
-            onChange={(e) => setState((s) => ({ ...s, search: e.target.value }))}
-            className="w-full px-3 py-1.5 text-sm rounded outline-none"
-            style={{
-              backgroundColor: "var(--vscode-input-background)",
-              color: "var(--vscode-input-foreground)",
-              border: "1px solid var(--vscode-input-border, transparent)",
-            }}
-          />
-          {state.search && (
-            <button
-              onClick={() => setState((s) => ({ ...s, search: "" }))}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs cursor-pointer opacity-60 hover:opacity-100"
-              style={{ color: "var(--vscode-input-foreground)" }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Filter mode */}
-        <ToggleGroup
-          options={[
-            { value: "all", label: `All (${state.packages.length})` },
-            { value: "installed", label: `Installed (${installedCount})` },
-            { value: "available", label: `Available (${state.packages.length - installedCount})` },
-          ]}
-          value={state.filterMode}
-          onChange={(v) => setState((s) => ({ ...s, filterMode: v as FilterMode }))}
-        />
-
-        {/* Actions */}
-        <div className="flex items-center gap-1.5 ml-auto">
-          <ActionButton
-            label="Refresh"
-            icon="↻"
+        <TabButton label="SDK Platforms" active={tab === "platforms"} onClick={() => setTab("platforms")} />
+        <TabButton label="SDK Tools" active={tab === "tools"} onClick={() => setTab("tools")} />
+        <div className="ml-auto flex items-center gap-2 px-3">
+          <button
             onClick={() => postMessage({ type: "refresh" })}
             disabled={state.loading}
-          />
-          <ActionButton
-            label="Update All"
-            icon="⬆"
-            onClick={() => postMessage({ type: "updateAll" })}
-            disabled={state.updatingAll || state.loading}
-            busy={state.updatingAll}
-          />
+            className="text-xs px-2 py-1 rounded cursor-pointer transition-colors disabled:opacity-40"
+            style={{
+              color: "var(--vscode-descriptionForeground)",
+            }}
+            title="Refresh"
+          >
+            ↻
+          </button>
         </div>
       </div>
 
-      {/* Category tabs */}
+      {/* Description */}
       <div
-        className="flex items-center gap-1 px-4 py-2 overflow-x-auto border-b"
-        style={{ borderColor: "var(--vscode-panel-border)" }}
-      >
-        <CategoryChip
-          label="All"
-          active={state.activeCategory === null}
-          onClick={() => setState((s) => ({ ...s, activeCategory: null }))}
-        />
-        {categories.map((cat) => (
-          <CategoryChip
-            key={cat}
-            label={CATEGORY_LABELS[cat]}
-            active={state.activeCategory === cat}
-            onClick={() => setState((s) => ({ ...s, activeCategory: cat }))}
-            count={state.packages.filter((p) => p.category === cat).length}
-          />
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        {filtered.length === 0 ? (
-          <div
-            className="flex items-center justify-center h-32 text-sm"
-            style={{ color: "var(--vscode-descriptionForeground)" }}
-          >
-            No packages match your filters
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                className="text-left text-xs uppercase tracking-wider sticky top-0"
-                style={{
-                  backgroundColor: "var(--vscode-editor-background)",
-                  color: "var(--vscode-descriptionForeground)",
-                }}
-              >
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium w-28">Version</th>
-                <th className="px-4 py-2 font-medium w-28">Status</th>
-                <th className="px-4 py-2 font-medium w-40">Category</th>
-                <th className="px-4 py-2 font-medium w-32 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((pkg) => (
-                <PackageRow
-                  key={pkg.id}
-                  pkg={pkg}
-                  busy={state.busyIds.has(pkg.id)}
-                  onInstall={() => postMessage({ type: "install", id: pkg.id })}
-                  onUninstall={() => postMessage({ type: "uninstall", id: pkg.id })}
-                />
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Status bar */}
-      <div
-        className="flex items-center justify-between px-4 py-1.5 text-xs border-t"
+        className="px-4 py-2 text-xs border-b"
         style={{
-          backgroundColor: "var(--vscode-sideBar-background, var(--vscode-editor-background))",
           borderColor: "var(--vscode-panel-border)",
           color: "var(--vscode-descriptionForeground)",
         }}
       >
-        <span>
-          {filtered.length} package{filtered.length !== 1 ? "s" : ""} shown
-          {state.search || state.filterMode !== "all" || state.activeCategory
-            ? ` (filtered from ${state.packages.length})`
-            : ""}
-        </span>
-        <span>{installedCount} installed</span>
+        {tab === "platforms"
+          ? 'Each Android SDK Platform package includes the Android platform and sources pertaining to an API level by default. Once installed, the IDE will automatically check for updates. Check "show package details" to display individual SDK components.'
+          : 'Below are the available SDK developer tools. Once installed, the IDE will automatically check for updates. Check "show package details" to display available versions of an SDK Tool.'}
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr
+              className="text-left text-xs sticky top-0 z-10 whitespace-nowrap"
+              style={{
+                backgroundColor: "var(--vscode-editor-background)",
+                color: "var(--vscode-descriptionForeground)",
+                borderBottom: "1px solid var(--vscode-panel-border)",
+              }}
+            >
+              <th className="w-8" />
+              <th className="px-3 py-2 font-medium">Name</th>
+              <th className="px-3 py-2 font-medium w-32">{tab === "platforms" ? "API Level" : "Version"}</th>
+              {tab === "platforms" && <th className="px-3 py-2 font-medium w-20">Revision</th>}
+              <th className="px-3 py-2 font-medium w-44">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tab === "platforms"
+              ? platformGroups.map((g) => (
+                  <PlatformGroupRows
+                    key={g.apiKey}
+                    group={g}
+                    showDetails={showDetails}
+                    expanded={expanded.has(g.apiKey)}
+                    onToggleExpand={() => toggleExpand(g.apiKey)}
+                    checked={checked}
+                    onToggleCheck={toggleCheck}
+                    busyIds={state.busyIds}
+                  />
+                ))
+              : toolGroups.map((g) => (
+                  <ToolGroupRows
+                    key={g.family}
+                    group={g}
+                    showDetails={showDetails}
+                    expanded={expanded.has(g.family)}
+                    onToggleExpand={() => toggleExpand(g.family)}
+                    checked={checked}
+                    onToggleCheck={toggleCheck}
+                    busyIds={state.busyIds}
+                  />
+                ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bottom bar */}
+      <div
+        className="flex items-center justify-between px-4 py-2 border-t text-xs"
+        style={{
+          backgroundColor: "var(--vscode-sideBar-background, var(--vscode-editor-background))",
+          borderColor: "var(--vscode-panel-border)",
+        }}
+      >
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-1.5 cursor-pointer" style={{ color: "var(--vscode-descriptionForeground)" }}>
+            <input
+              type="checkbox"
+              checked={hideObsolete}
+              onChange={(e) => setHideObsolete(e.target.checked)}
+              className="accent-[var(--vscode-focusBorder)]"
+            />
+            Hide Obsolete Packages
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer" style={{ color: "var(--vscode-descriptionForeground)" }}>
+            <input
+              type="checkbox"
+              checked={showDetails}
+              onChange={(e) => setShowDetails(e.target.checked)}
+              className="accent-[var(--vscode-focusBorder)]"
+            />
+            Show Package Details
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasPendingChanges && (
+            <span style={{ color: "var(--vscode-descriptionForeground)" }}>
+              {pendingInstall.length > 0 && `${pendingInstall.length} to install`}
+              {pendingInstall.length > 0 && pendingUninstall.length > 0 && ", "}
+              {pendingUninstall.length > 0 && `${pendingUninstall.length} to uninstall`}
+            </span>
+          )}
+          <button
+            onClick={handleCancel}
+            disabled={!hasPendingChanges || state.applying}
+            className="px-3 py-1 rounded cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: "var(--vscode-button-secondaryBackground)",
+              color: "var(--vscode-button-secondaryForeground)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleApply}
+            disabled={!hasPendingChanges || state.applying}
+            className="px-3 py-1 rounded cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: "var(--vscode-button-background)",
+              color: "var(--vscode-button-foreground)",
+            }}
+          >
+            {state.applying ? <><Spinner /> Applying…</> : "Apply"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ── Sub-components ──────────────────────────────────────────────────────────── */
+/* ── Platform group rows ─────────────────────────────────────────────────────── */
 
-function PackageRow({
-  pkg,
-  busy,
-  onInstall,
-  onUninstall,
+function PlatformGroupRows({
+  group,
+  showDetails,
+  expanded,
+  onToggleExpand,
+  checked,
+  onToggleCheck,
+  busyIds,
 }: {
-  pkg: SdkPackage;
-  busy: boolean;
-  onInstall: () => void;
-  onUninstall: () => void;
+  group: PlatformGroup;
+  showDetails: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  checked: Set<string>;
+  onToggleCheck: (id: string) => void;
+  busyIds: Set<string>;
 }) {
-  const [hovered, setHovered] = useState(false);
+  const status = groupStatus(group.packages);
+  const installedCount = group.packages.filter((p) => p.installed).length;
+  const platformPkg = group.packages.find((p) => p.category === "platforms");
+  const revision = platformPkg?.version ?? "";
+  const apiDisplay = group.apiKey;
 
+  // Group-level checkbox: all checked or none
+  const allChecked = group.packages.every((p) => checked.has(p.id));
+  const someChecked = group.packages.some((p) => checked.has(p.id));
+
+  const handleGroupCheck = () => {
+    if (allChecked) {
+      group.packages.forEach((p) => onToggleCheck(p.id));
+    } else {
+      group.packages.filter((p) => !checked.has(p.id)).forEach((p) => onToggleCheck(p.id));
+    }
+  };
+
+  if (!showDetails) {
+    return (
+      <tr
+        className="border-b transition-colors hover-row"
+        style={{ borderColor: "var(--vscode-panel-border)" }}
+      >
+        <td className="pl-3 pr-1 py-1.5 text-center whitespace-nowrap">
+          <Checkbox checked={allChecked} indeterminate={someChecked && !allChecked} onChange={handleGroupCheck} />
+        </td>
+        <td className="px-3 py-1.5 font-medium whitespace-nowrap">{group.label}</td>
+        <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{apiDisplay}</td>
+        <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{revision}</td>
+        <td className="px-3 py-1.5 whitespace-nowrap">
+          <StatusText status={status} installedCount={installedCount} totalCount={group.packages.length} pkg={platformPkg} />
+        </td>
+      </tr>
+    );
+  }
+
+  const isExpanded = expanded;
   return (
-    <tr
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="border-b transition-colors"
-      style={{
-        borderColor: "var(--vscode-panel-border)",
-        backgroundColor: hovered
-          ? "var(--vscode-list-hoverBackground)"
-          : "transparent",
-      }}
-    >
-      <td className="px-4 py-2">
-        <div className="font-medium" style={{ color: "var(--vscode-foreground)" }}>
-          {pkg.displayName}
-        </div>
-        <div
-          className="text-xs font-mono mt-0.5 truncate max-w-md"
-          style={{ color: "var(--vscode-descriptionForeground)" }}
-        >
-          {pkg.id}
-        </div>
-      </td>
-      <td className="px-4 py-2 font-mono" style={{ color: "var(--vscode-descriptionForeground)" }}>
-        {pkg.version}
-      </td>
-      <td className="px-4 py-2">
-        <StatusBadge installed={pkg.installed} />
-      </td>
-      <td className="px-4 py-2" style={{ color: "var(--vscode-descriptionForeground)" }}>
-        {CATEGORY_LABELS[pkg.category] ?? pkg.category}
-      </td>
-      <td className="px-4 py-2 text-right">
-        {busy ? (
-          <span className="inline-flex items-center gap-1 text-xs" style={{ color: "var(--vscode-descriptionForeground)" }}>
-            <Spinner /> Working…
+    <>
+      <tr
+        className="border-b transition-colors hover-row cursor-pointer"
+        style={{ borderColor: "var(--vscode-panel-border)" }}
+        onClick={onToggleExpand}
+      >
+        <td className="pl-3 pr-1 py-1.5 text-center whitespace-nowrap">
+          <Checkbox checked={allChecked} indeterminate={someChecked && !allChecked} onChange={(e) => { e.stopPropagation(); handleGroupCheck(); }} />
+        </td>
+        <td className="px-3 py-1.5 font-medium whitespace-nowrap">
+          <span className="inline-flex items-center gap-1">
+            <ChevronIcon expanded={isExpanded} />
+            <span className="font-semibold">{group.label}</span>
           </span>
-        ) : pkg.installed ? (
-          <ActionButton label="Uninstall" icon="🗑" onClick={onUninstall} variant="danger" />
-        ) : (
-          <ActionButton label="Install" icon="↓" onClick={onInstall} />
-        )}
-      </td>
-    </tr>
+        </td>
+        <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{apiDisplay}</td>
+        <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{revision}</td>
+        <td className="px-3 py-1.5 whitespace-nowrap">
+          <StatusText status={status} installedCount={installedCount} totalCount={group.packages.length} pkg={platformPkg} />
+        </td>
+      </tr>
+      {isExpanded &&
+        group.packages.map((p) => (
+          <tr
+            key={p.id}
+            className="border-b transition-colors hover-row"
+            style={{ borderColor: "var(--vscode-panel-border)" }}
+          >
+            <td className="pl-8 pr-1 py-1.5 text-center whitespace-nowrap">
+              {busyIds.has(p.id) ? <Spinner /> : <Checkbox checked={checked.has(p.id)} onChange={() => onToggleCheck(p.id)} />}
+            </td>
+            <td className="px-3 py-1.5 pl-10 whitespace-nowrap" style={{ color: "var(--vscode-foreground)" }}>
+              {p.displayName}
+            </td>
+            <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{extractApiKey(p.id) ?? ""}</td>
+            <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{p.version}</td>
+            <td className="px-3 py-1.5 whitespace-nowrap">
+              <StatusText status={p.installed ? (hasRealUpdate(p) ? "update" : "installed") : "not_installed"} pkg={p} />
+            </td>
+          </tr>
+        ))}
+    </>
   );
 }
 
-function StatusBadge({ installed }: { installed: boolean }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full"
-      style={{
-        backgroundColor: installed
-          ? "color-mix(in srgb, var(--vscode-terminal-ansiGreen) 15%, transparent)"
-          : "color-mix(in srgb, var(--vscode-descriptionForeground) 10%, transparent)",
-        color: installed
-          ? "var(--vscode-terminal-ansiGreen)"
-          : "var(--vscode-descriptionForeground)",
-      }}
-    >
-      <span className="w-1.5 h-1.5 rounded-full" style={{
-        backgroundColor: installed
-          ? "var(--vscode-terminal-ansiGreen)"
-          : "var(--vscode-descriptionForeground)",
-      }} />
-      {installed ? "Installed" : "Available"}
-    </span>
-  );
-}
+/* ── Tool group rows ─────────────────────────────────────────────────────────── */
 
-function CategoryChip({
-  label,
-  active,
-  onClick,
-  count,
+function ToolGroupRows({
+  group,
+  showDetails,
+  expanded,
+  onToggleExpand,
+  checked,
+  onToggleCheck,
+  busyIds,
 }: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  count?: number;
+  group: ToolGroup;
+  showDetails: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  checked: Set<string>;
+  onToggleCheck: (id: string) => void;
+  busyIds: Set<string>;
 }) {
+  const status = groupStatus(group.packages);
+  const latestPkg = group.packages[0];
+  const installedPkg = group.packages.find((p) => p.installed);
+  const displayVersion = installedPkg?.version ?? latestPkg?.version ?? "";
+
+  // Group checkbox
+  const allChecked = group.packages.every((p) => checked.has(p.id));
+  const someChecked = group.packages.some((p) => checked.has(p.id));
+
+  const handleGroupCheck = () => {
+    if (allChecked) {
+      group.packages.forEach((p) => onToggleCheck(p.id));
+    } else {
+      group.packages.filter((p) => !checked.has(p.id)).forEach((p) => onToggleCheck(p.id));
+    }
+  };
+
+  if (group.singleton || !showDetails) {
+    const p = group.singleton ? group.packages[0] : undefined;
+    const id = p?.id ?? group.packages[0]?.id;
+    const isBusy = id ? busyIds.has(id) : false;
+    return (
+      <tr
+        className="border-b transition-colors hover-row"
+        style={{ borderColor: "var(--vscode-panel-border)" }}
+      >
+        <td className="pl-3 pr-1 py-1.5 text-center whitespace-nowrap">
+          {isBusy ? <Spinner /> : <Checkbox checked={group.singleton ? checked.has(id!) : allChecked} indeterminate={!group.singleton && someChecked && !allChecked} onChange={group.singleton ? () => onToggleCheck(id!) : handleGroupCheck} />}
+        </td>
+        <td className="px-3 py-1.5 font-medium whitespace-nowrap">{group.label}</td>
+        <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{displayVersion}</td>
+        <td className="px-3 py-1.5 whitespace-nowrap">
+          <StatusText status={status} installedCount={group.packages.filter((q) => q.installed).length} totalCount={group.packages.length} pkg={installedPkg ?? latestPkg} />
+        </td>
+      </tr>
+    );
+  }
+
+  const isExpanded = expanded;
+  return (
+    <>
+      <tr
+        className="border-b transition-colors hover-row cursor-pointer"
+        style={{ borderColor: "var(--vscode-panel-border)" }}
+        onClick={onToggleExpand}
+      >
+        <td className="pl-3 pr-1 py-1.5 text-center whitespace-nowrap">
+          <Checkbox checked={allChecked} indeterminate={someChecked && !allChecked} onChange={(e) => { e.stopPropagation(); handleGroupCheck(); }} />
+        </td>
+        <td className="px-3 py-1.5 font-medium whitespace-nowrap">
+          <span className="inline-flex items-center gap-1">
+            <ChevronIcon expanded={isExpanded} />
+            <span className="font-semibold">{group.label}</span>
+          </span>
+        </td>
+        <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{displayVersion}</td>
+        <td className="px-3 py-1.5 whitespace-nowrap">
+          <StatusText status={status} installedCount={group.packages.filter((q) => q.installed).length} totalCount={group.packages.length} pkg={installedPkg ?? latestPkg} />
+        </td>
+      </tr>
+      {isExpanded &&
+        group.packages.map((p) => (
+          <tr
+            key={p.id}
+            className="border-b transition-colors hover-row"
+            style={{ borderColor: "var(--vscode-panel-border)" }}
+          >
+            <td className="pl-8 pr-1 py-1.5 text-center whitespace-nowrap">
+              {busyIds.has(p.id) ? <Spinner /> : <Checkbox checked={checked.has(p.id)} onChange={() => onToggleCheck(p.id)} />}
+            </td>
+            <td className="px-3 py-1.5 pl-10 whitespace-nowrap" style={{ color: "var(--vscode-foreground)" }}>
+              {p.displayName}
+            </td>
+            <td className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: "var(--vscode-descriptionForeground)" }}>{p.version}</td>
+            <td className="px-3 py-1.5 whitespace-nowrap">
+              <StatusText status={p.installed ? (hasRealUpdate(p) ? "update" : "installed") : "not_installed"} pkg={p} />
+            </td>
+          </tr>
+        ))}
+    </>
+  );
+}
+
+/* ── Shared components ───────────────────────────────────────────────────────── */
+
+function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="shrink-0 text-xs px-2.5 py-1 rounded-full cursor-pointer transition-colors whitespace-nowrap"
+      className="px-4 py-2.5 text-sm font-medium cursor-pointer transition-colors relative"
       style={{
-        backgroundColor: active
-          ? "var(--vscode-button-background)"
-          : "transparent",
-        color: active
-          ? "var(--vscode-button-foreground)"
-          : "var(--vscode-descriptionForeground)",
-        border: active
-          ? "1px solid transparent"
-          : "1px solid var(--vscode-panel-border)",
+        color: active ? "var(--vscode-foreground)" : "var(--vscode-descriptionForeground)",
+        backgroundColor: "transparent",
       }}
     >
       {label}
-      {count !== undefined && (
-        <span className="ml-1 opacity-70">{count}</span>
+      {active && (
+        <span
+          className="absolute bottom-0 left-0 right-0 h-0.5"
+          style={{ backgroundColor: "var(--vscode-focusBorder)" }}
+        />
       )}
     </button>
   );
 }
 
-function ToggleGroup({
-  options,
-  value,
+function Checkbox({
+  checked,
+  indeterminate,
   onChange,
 }: {
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: (e: React.MouseEvent | React.ChangeEvent) => void;
 }) {
   return (
-    <div
-      className="flex rounded overflow-hidden text-xs"
-      style={{ border: "1px solid var(--vscode-panel-border)" }}
-    >
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className="px-2.5 py-1 cursor-pointer transition-colors whitespace-nowrap"
-          style={{
-            backgroundColor:
-              value === opt.value
-                ? "var(--vscode-button-background)"
-                : "transparent",
-            color:
-              value === opt.value
-                ? "var(--vscode-button-foreground)"
-                : "var(--vscode-descriptionForeground)",
-          }}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
+    <input
+      type="checkbox"
+      checked={checked}
+      ref={(el) => { if (el) el.indeterminate = !!indeterminate; }}
+      onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
+      onClick={(e) => e.stopPropagation()}
+      className="accent-[var(--vscode-focusBorder)] cursor-pointer"
+    />
   );
 }
 
-function ActionButton({
-  label,
-  icon,
-  onClick,
-  disabled,
-  busy,
-  variant,
+function StatusText({
+  status,
+  pkg,
 }: {
-  label: string;
-  icon: string;
-  onClick: () => void;
-  disabled?: boolean;
-  busy?: boolean;
-  variant?: "danger";
+  status: "installed" | "partial" | "not_installed" | "update";
+  installedCount?: number;
+  totalCount?: number;
+  pkg?: SdkPackage;
 }) {
-  const [hovered, setHovered] = useState(false);
-  const isDanger = variant === "danger";
+  switch (status) {
+    case "installed":
+      return <span style={{ color: "var(--vscode-terminal-ansiGreen)" }}>Installed</span>;
+    case "partial":
+      return <span style={{ color: "var(--vscode-editorWarning-foreground)" }}>Partially installed</span>;
+    case "not_installed":
+      return <span style={{ color: "var(--vscode-descriptionForeground)" }}>Not installed</span>;
+    case "update":
+      return (
+        <span style={{ color: "var(--vscode-textLink-foreground)" }}>
+          Update Available{pkg?.availableVersion ? `: ${pkg.availableVersion}` : ""}
+        </span>
+      );
+  }
+}
 
+function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="currentColor"
       style={{
-        backgroundColor:
-          hovered && !disabled
-            ? isDanger
-              ? "var(--vscode-inputValidation-errorBackground, rgba(255,0,0,0.1))"
-              : "var(--vscode-button-hoverBackground)"
-            : isDanger
-              ? "transparent"
-              : "var(--vscode-button-background)",
-        color: isDanger
-          ? "var(--vscode-errorForeground, #f44)"
-          : "var(--vscode-button-foreground)",
-        border: isDanger
-          ? "1px solid var(--vscode-errorForeground, #f44)"
-          : "1px solid transparent",
+        transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+        transition: "transform 0.15s",
+        color: "var(--vscode-descriptionForeground)",
       }}
     >
-      {busy ? <Spinner /> : <span>{icon}</span>}
-      {label}
-    </button>
+      <path d="M10.072 8.024L5.715 3.667l.618-.62L11 7.716v.618L6.333 12.98l-.618-.62 4.357-4.336z" />
+    </svg>
   );
 }
 

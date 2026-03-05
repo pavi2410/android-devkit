@@ -17,4 +17,7 @@ export interface SdkPackage {
   version: string;
   installed: boolean;
   category: SdkPackageCategory;
+  installedVersion?: string;
+  availableVersion?: string;
+  obsolete?: boolean;
 }
