@@ -355,6 +355,12 @@
         "title": "Install APK from File",
         "icon": "$(cloud-download)",
         "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.addToTerminalPath",
+        "title": "Add Android SDK Tools to Terminal PATH",
+        "icon": "$(terminal)",
+        "category": "Android DevKit"
       }
     ],
     "menus": {

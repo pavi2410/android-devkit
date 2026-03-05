@@ -16,6 +16,7 @@ import { AdbService } from "./services/adb";
 import { SdkService } from "./services/sdk";
 import { GradleService } from "./services/gradle";
 import { WelcomePanel } from "./webviews/welcome";
+import { applyTerminalEnv } from "./services/terminal-env";
 
 let adbService: AdbService;
 let sdkService: SdkService;
@@ -185,6 +186,24 @@ export function activate(context: vscode.ExtensionContext) {
         } else if (action === "Open Settings") {
           vscode.commands.executeCommand("workbench.action.openSettings", "androidDevkit.sdkPath");
         }
+      }
+    })
+  );
+
+  // Inject Android SDK tool dirs into terminal PATH
+  applyTerminalEnv(context.environmentVariableCollection, sdkService);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("androidDevkit.addToTerminalPath", () => {
+      const count = applyTerminalEnv(context.environmentVariableCollection, sdkService);
+      if (count > 0) {
+        vscode.window.showInformationMessage(
+          `Android SDK tools added to terminal PATH (${count} director${count === 1 ? "y" : "ies"}).`
+        );
+      } else {
+        vscode.window.showWarningMessage(
+          "Android SDK not found. Configure androidDevkit.sdkPath first."
+        );
       }
     })
   );
