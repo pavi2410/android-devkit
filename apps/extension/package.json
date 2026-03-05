@@ -109,6 +109,7 @@
         {
           "id": "androidDevkit.logcat",
           "name": "Logcat",
+          "icon": "$(output)",
           "type": "tree",
           "contextualTitle": "Android Logcat"
         }
