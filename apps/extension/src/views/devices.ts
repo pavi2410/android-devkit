@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import type { AdbService, DeviceInfo } from "../services/adb";
+import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
 
-type DevicesTreeItem = DeviceTreeItem | PropertyItem | NoDevicesItem | ErrorItem;
+type DevicesTreeItem = DeviceTreeItem | PropertyItem | ErrorItem;
 
 export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<DevicesTreeItem | undefined | null | void>();
@@ -12,6 +13,7 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeI
   constructor(private adbService: AdbService) {
     // Listen for device changes
     adbService.onDevicesChanged(() => this.refresh());
+    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasDevices, false);
   }
 
   refresh(): void {
@@ -33,14 +35,20 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeI
     // Root level - list devices
     try {
       this.devices = await this.adbService.getDevices();
+      void vscode.commands.executeCommand(
+        VS_CODE_COMMANDS.setContext,
+        CONTEXT_KEYS.hasDevices,
+        this.devices.length > 0
+      );
 
       if (this.devices.length === 0) {
-        return [new NoDevicesItem()];
+        return [];
       }
 
       return this.devices.map((device) => new DeviceTreeItem(device));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasDevices, false);
       vscode.window.showErrorMessage(`Failed to list devices: ${message}`);
       return [new ErrorItem(message)];
     }
@@ -136,14 +144,6 @@ class PropertyItem extends vscode.TreeItem {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.description = value;
     this.iconPath = new vscode.ThemeIcon("symbol-property");
-  }
-}
-
-class NoDevicesItem extends vscode.TreeItem {
-  constructor() {
-    super("No devices connected", vscode.TreeItemCollapsibleState.None);
-    this.iconPath = new vscode.ThemeIcon("info");
-    this.tooltip = "Connect a device via USB or start an emulator";
   }
 }
 

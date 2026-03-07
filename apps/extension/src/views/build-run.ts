@@ -8,6 +8,8 @@ type BuildRunTreeItem = SectionItem | ActionItem;
 export class BuildRunProvider implements vscode.TreeDataProvider<BuildRunTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<BuildRunTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private _onDidSelectionChange = new vscode.EventEmitter<void>();
+  readonly onDidSelectionChange = this._onDidSelectionChange.event;
 
   private selectedVariant: BuildVariant | undefined;
   private selectedDeviceSerial: string | undefined;
@@ -36,9 +38,30 @@ export class BuildRunProvider implements vscode.TreeDataProvider<BuildRunTreeIte
     return this.selectedDeviceSerial;
   }
 
+  getSelectedDeviceLabel(): string | undefined {
+    return this.selectedDeviceLabel;
+  }
+
+  async ensureInitialized(): Promise<void> {
+    if (this.variants.length > 0) {
+      return;
+    }
+
+    try {
+      this.variants = await this.gradleService.getBuildVariants();
+      if (this.variants.length > 0 && !this.selectedVariant) {
+        const debugVariant = this.variants.find((v) => v.name.toLowerCase() === "debug") ?? this.variants[0];
+        await this.setVariant(debugVariant);
+      }
+    } catch {
+      this.variants = [];
+    }
+  }
+
   async setVariant(variant: BuildVariant): Promise<void> {
     this.selectedVariant = variant;
     await this.context.workspaceState.update("buildRun.variant", variant);
+    this._onDidSelectionChange.fire();
     this.refresh();
   }
 
@@ -47,6 +70,7 @@ export class BuildRunProvider implements vscode.TreeDataProvider<BuildRunTreeIte
     this.selectedDeviceLabel = label;
     await this.context.workspaceState.update("buildRun.deviceSerial", serial);
     await this.context.workspaceState.update("buildRun.deviceLabel", label);
+    this._onDidSelectionChange.fire();
     this.refresh();
   }
 
@@ -57,17 +81,7 @@ export class BuildRunProvider implements vscode.TreeDataProvider<BuildRunTreeIte
   async getChildren(element?: BuildRunTreeItem): Promise<BuildRunTreeItem[]> {
     if (element) return [];
 
-    if (this.variants.length === 0) {
-      try {
-        this.variants = await this.gradleService.getBuildVariants();
-        if (this.variants.length > 0 && !this.selectedVariant) {
-          const debugVariant = this.variants.find((v) => v.name.toLowerCase() === "debug") ?? this.variants[0];
-          await this.setVariant(debugVariant);
-        }
-      } catch {
-        this.variants = [];
-      }
-    }
+    await this.ensureInitialized();
 
     const variantLabel = this.selectedVariant?.name ?? "Not selected";
     const deviceLabel = this.selectedDeviceLabel ?? "Not selected";
@@ -84,6 +98,11 @@ export class BuildRunProvider implements vscode.TreeDataProvider<BuildRunTreeIte
 
   getVariants(): BuildVariant[] {
     return this.variants;
+  }
+
+  dispose(): void {
+    this._onDidSelectionChange.dispose();
+    this._onDidChangeTreeData.dispose();
   }
 }
 

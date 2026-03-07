@@ -9,8 +9,11 @@ export const ANDROID_DEVKIT_COMMANDS = {
   openShell: "androidDevkit.openShell",
   browseFiles: "androidDevkit.browseFiles",
   startLogcat: "androidDevkit.startLogcat",
+  pauseLogcat: "androidDevkit.pauseLogcat",
   stopLogcat: "androidDevkit.stopLogcat",
   clearLogcat: "androidDevkit.clearLogcat",
+  showLogcatOutput: "androidDevkit.showLogcatOutput",
+  logcatStatusMenu: "androidDevkit.logcatStatusMenu",
   setLogcatFilter: "androidDevkit.setLogcatFilter",
   setLogcatPackageFilter: "androidDevkit.setLogcatPackageFilter",
   refreshFileExplorer: "androidDevkit.refreshFileExplorer",
@@ -65,5 +68,10 @@ export type VsCodeCommandId = (typeof VS_CODE_COMMANDS)[keyof typeof VS_CODE_COM
 export type KnownCommandId = AndroidDevkitCommandId | VsCodeCommandId;
 
 export const CONTEXT_KEYS = {
+  fileExplorerHasDevice: "androidDevkit.fileExplorerHasDevice",
+  hasAvds: "androidDevkit.hasAvds",
+  hasDevices: "androidDevkit.hasDevices",
   logcatRunning: "androidDevkit.logcatRunning",
+  logcatPaused: "androidDevkit.logcatPaused",
+  sdkConfigured: "androidDevkit.sdkConfigured",
 } as const;

@@ -1,25 +1,30 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import { detectAndroidAppPackage } from "@android-devkit/android-project";
 import type { GradleService } from "../services/gradle";
 import type { AdbService } from "../services/adb";
 import type { BuildRunProvider } from "../views/build-run";
-import { ANDROID_DEVKIT_COMMANDS } from "./ids";
+import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS } from "./ids";
+import { promptForAndroidAppPackage } from "../utils/android-app";
 
-async function resolvePackageName(): Promise<string | undefined> {
-  const config = vscode.workspace.getConfiguration("androidDevkit");
-  const configured = config.get<string>("appPackage");
-  if (configured) return configured;
+async function showBuildResultActions(
+  message: string,
+  outputChannel: vscode.OutputChannel,
+  apkPath?: string
+): Promise<void> {
+  const actions = ["Show Output"];
+  if (apkPath) {
+    actions.unshift("Open APK Folder");
+  }
 
-  const projectRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  const detected = projectRoot ? detectAndroidAppPackage(projectRoot) : undefined;
-  if (detected) return detected;
+  const selection = await vscode.window.showInformationMessage(message, ...actions);
+  if (selection === "Show Output") {
+    outputChannel.show(true);
+    return;
+  }
 
-  return vscode.window.showInputBox({
-    title: "App Package Name",
-    prompt: "Enter the app package name (e.g. com.example.myapp)",
-    placeHolder: "com.example.myapp",
-  });
+  if (selection === "Open APK Folder" && apkPath) {
+    await vscode.commands.executeCommand(VS_CODE_COMMANDS.revealFileInOs, vscode.Uri.file(apkPath));
+  }
 }
 
 export function registerRunCommands(
@@ -103,7 +108,8 @@ export function registerRunCommands(
         async (_progress, token) => {
           try {
             await gradleService.runTask(variant.assembleTask, outputChannel, token);
-            vscode.window.showInformationMessage(`✓ ${variant.name} build succeeded.`);
+            const apkPath = gradleService.findApk(variant);
+            await showBuildResultActions(`${variant.name} build succeeded.`, outputChannel, apkPath);
           } catch (err) {
             const msg = err instanceof Error ? err.message : "Unknown error";
             vscode.window.showErrorMessage(`Build failed: ${msg}`);
@@ -125,7 +131,7 @@ export function registerRunCommands(
         return;
       }
 
-      const packageName = await resolvePackageName();
+      const packageName = await promptForAndroidAppPackage();
       if (!packageName) return;
 
       outputChannel.clear();
@@ -150,7 +156,7 @@ export function registerRunCommands(
             await adbService.launchApp(serial, packageName);
 
             outputChannel.appendLine(`\n✓ App launched successfully.`);
-            vscode.window.showInformationMessage(`✓ ${packageName} running on device.`);
+            await showBuildResultActions(`${packageName} is running on the selected device.`, outputChannel, apkPath);
           } catch (err) {
             const msg = err instanceof Error ? err.message : "Unknown error";
             outputChannel.appendLine(`\n✗ Error: ${msg}`);
@@ -167,7 +173,7 @@ export function registerRunCommands(
         return;
       }
 
-      const packageName = await resolvePackageName();
+      const packageName = await promptForAndroidAppPackage();
       if (!packageName) return;
 
       try {
@@ -199,7 +205,7 @@ export function registerRunCommands(
           { location: vscode.ProgressLocation.Notification, title: `Installing ${path.basename(apkPath)}…`, cancellable: false },
           () => adbService.installApk(serial, apkPath)
         );
-        vscode.window.showInformationMessage(`✓ ${path.basename(apkPath)} installed.`);
+        await showBuildResultActions(`${path.basename(apkPath)} installed on the selected device.`, outputChannel, apkPath);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         vscode.window.showErrorMessage(`Install failed: ${msg}`);

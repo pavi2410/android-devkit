@@ -3,6 +3,87 @@ import type { AdbService } from "../services/adb";
 import type { LogcatTreeProvider } from "../views/logcat";
 import type { LogLevel } from "@android-devkit/logcat";
 import { ANDROID_DEVKIT_COMMANDS } from "./ids";
+import { resolveConfiguredOrDetectedAppPackage } from "../utils/android-app";
+
+type LogcatDeviceSelection = {
+  label: string;
+  serial?: string;
+};
+
+async function resolveLogcatDevice(
+  adbService: AdbService,
+  currentSerial?: string
+): Promise<LogcatDeviceSelection | undefined> {
+  const readyDevices = (await adbService.getDevices()).filter((d) => d.state === "device");
+
+  if (readyDevices.length === 0) {
+    vscode.window.showWarningMessage("No connected devices or emulators available for Logcat.");
+    return undefined;
+  }
+
+  if (currentSerial) {
+    const currentDevice = readyDevices.find((device) => device.serial === currentSerial);
+    if (currentDevice) {
+      return {
+        label: currentDevice.name,
+        serial: currentDevice.serial,
+      };
+    }
+  }
+
+  if (readyDevices.length === 1) {
+    return {
+      label: readyDevices[0].name,
+      serial: readyDevices[0].serial,
+    };
+  }
+
+  const selection = await vscode.window.showQuickPick(
+    [
+      { label: "All Devices", description: "Use the current minimum log level across all connected devices", serial: undefined },
+      ...readyDevices.map((device) => ({
+        label: device.name,
+        description: device.serial,
+        detail: `Android ${device.androidVersion} · API ${device.apiLevel}`,
+        serial: device.serial,
+      })),
+    ],
+    {
+      placeHolder: "Select a device or emulator for Logcat",
+      title: "Start Logcat",
+    }
+  );
+
+  if (!selection) {
+    return undefined;
+  }
+
+  return {
+    label: selection.label,
+    serial: selection.serial,
+  };
+}
+
+async function resolveDefaultPackagePid(
+  adbService: AdbService,
+  serial?: string,
+  packageName?: string
+): Promise<{ packageName?: string; pid?: number }> {
+  if (!serial) {
+    return {};
+  }
+
+  const resolvedPackageName = packageName ?? resolveConfiguredOrDetectedAppPackage();
+  if (!resolvedPackageName) {
+    return {};
+  }
+
+  const pid = await adbService.getPidForPackage(serial, resolvedPackageName).catch(() => null);
+  return {
+    packageName: resolvedPackageName,
+    pid: pid ?? undefined,
+  };
+}
 
 export function registerLogcatCommands(
   context: vscode.ExtensionContext,
@@ -12,31 +93,29 @@ export function registerLogcatCommands(
   // Start logcat
   context.subscriptions.push(
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.startLogcat, async () => {
-      const devices = await adbService.getDevices();
-
-      let serial: string | undefined;
-
-      if (devices.length > 1) {
-        const selected = await vscode.window.showQuickPick(
-          [
-            { label: "All Devices", serial: undefined },
-            ...devices.map((d) => ({
-              label: d.name,
-              description: d.serial,
-              serial: d.serial,
-            })),
-          ],
-          { placeHolder: "Select a device for logcat" }
-        );
-
-        if (!selected) return;
-        serial = selected.serial;
-      } else if (devices.length === 1) {
-        serial = devices[0].serial;
+      if (logcatProvider.getSessionState() === "paused") {
+        logcatProvider.resume();
+        return;
       }
 
-      logcatProvider.start(serial);
-      vscode.window.showInformationMessage("Logcat started");
+      const session = logcatProvider.getSession();
+      const device = await resolveLogcatDevice(adbService, session.serial);
+      if (!device) return;
+
+      const defaultPackage = await resolveDefaultPackagePid(adbService, device.serial, session.packageName);
+      logcatProvider.start({
+        deviceLabel: device.label,
+        minLevel: session.minLevel,
+        packageName: defaultPackage.packageName,
+        pid: defaultPackage.pid,
+        serial: device.serial,
+      });
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.pauseLogcat, () => {
+      logcatProvider.pause();
     })
   );
 
@@ -44,7 +123,6 @@ export function registerLogcatCommands(
   context.subscriptions.push(
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.stopLogcat, () => {
       logcatProvider.stop();
-      vscode.window.showInformationMessage("Logcat stopped");
     })
   );
 
@@ -52,7 +130,70 @@ export function registerLogcatCommands(
   context.subscriptions.push(
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.clearLogcat, async () => {
       await logcatProvider.clear();
-      vscode.window.showInformationMessage("Logcat cleared");
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.showLogcatOutput, () => {
+      logcatProvider.show();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.logcatStatusMenu, async () => {
+      const state = logcatProvider.getSessionState();
+      const items = [
+        state === "paused"
+          ? {
+              label: "$(play) Resume Logcat",
+              command: ANDROID_DEVKIT_COMMANDS.startLogcat,
+            }
+          : {
+              label: "$(play) Start Logcat",
+              command: ANDROID_DEVKIT_COMMANDS.startLogcat,
+            },
+        {
+          label: "$(debug-pause) Pause Logcat",
+          command: ANDROID_DEVKIT_COMMANDS.pauseLogcat,
+        },
+        {
+          label: "$(debug-stop) Stop Logcat",
+          command: ANDROID_DEVKIT_COMMANDS.stopLogcat,
+        },
+        {
+          label: "$(clear-all) Clear Logcat",
+          command: ANDROID_DEVKIT_COMMANDS.clearLogcat,
+        },
+        {
+          label: "$(filter) Configure Filters",
+          command: ANDROID_DEVKIT_COMMANDS.setLogcatFilter,
+        },
+        {
+          label: "$(package) Choose Package Filter",
+          command: ANDROID_DEVKIT_COMMANDS.setLogcatPackageFilter,
+        },
+        {
+          label: "$(output) Show Output",
+          command: ANDROID_DEVKIT_COMMANDS.showLogcatOutput,
+        },
+      ].filter((item) => {
+        if (item.command === ANDROID_DEVKIT_COMMANDS.pauseLogcat) {
+          return state === "running";
+        }
+        if (item.command === ANDROID_DEVKIT_COMMANDS.stopLogcat) {
+          return state !== "stopped";
+        }
+        return true;
+      });
+
+      const selection = await vscode.window.showQuickPick(items, {
+        title: "Logcat Controls",
+        placeHolder: "Choose a Logcat action",
+      });
+
+      if (selection) {
+        await vscode.commands.executeCommand(selection.command);
+      }
     })
   );
 
@@ -70,13 +211,19 @@ export function registerLogcatCommands(
         S: "Silent",
       };
 
+      const currentLevel = logcatProvider.getSession().minLevel;
+
       // Ask for level filter
       const levelChoice = await vscode.window.showQuickPick(
         levels.map((l) => ({
           label: `${l} - ${levelNames[l]}`,
+          description: l === currentLevel ? "Current" : undefined,
+          detail: l === "V" || l === "D"
+            ? "Higher verbosity can increase host/device load"
+            : undefined,
           level: l,
         })),
-        { placeHolder: "Select minimum log level" }
+        { placeHolder: "Select minimum log level", title: "Configure Logcat Filters" }
       );
 
       if (levelChoice) {
@@ -87,63 +234,53 @@ export function registerLogcatCommands(
       const textFilter = await vscode.window.showInputBox({
         prompt: "Enter text filter (tag or message content)",
         placeHolder: "e.g., MyApp, ActivityManager, error",
+        value: "",
       });
 
       logcatProvider.setFilter(textFilter || undefined);
-
-      const filterDesc = [];
-      if (levelChoice) filterDesc.push(`Level: ${levelChoice.level}+`);
-      if (textFilter) filterDesc.push(`Text: "${textFilter}"`);
-
-      if (filterDesc.length > 0) {
-        vscode.window.showInformationMessage(`Filter set: ${filterDesc.join(", ")}`);
-      } else {
-        vscode.window.showInformationMessage("Filters cleared");
-      }
     })
   );
 
   // Filter by package name
   context.subscriptions.push(
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.setLogcatPackageFilter, async () => {
-      const devices = await adbService.getDevices();
-      const readyDevices = devices.filter((d) => d.state === "device");
-
-      if (readyDevices.length === 0) {
-        vscode.window.showWarningMessage("No devices connected to list packages");
+      const session = logcatProvider.getSession();
+      const device = await resolveLogcatDevice(adbService, session.serial);
+      if (!device?.serial) {
+        if (device && !device.serial) {
+          logcatProvider.setPackageFilter(undefined, undefined);
+        }
         return;
       }
+      const serial = device.serial;
 
-      const serial = readyDevices.length === 1
-        ? readyDevices[0].serial
-        : (await vscode.window.showQuickPick(
-            readyDevices.map((d) => ({ label: d.name, description: d.serial, serial: d.serial })),
-            { placeHolder: "Select device to list packages from" }
-          ))?.serial;
-
-      if (!serial) return;
+      const currentAppPackage = resolveConfiguredOrDetectedAppPackage();
 
       // Let user type package name or pick from installed packages
       const inputMethod = await vscode.window.showQuickPick(
         [
+          currentAppPackage
+            ? { label: `Use current app package`, description: currentAppPackage, value: "current" }
+            : undefined,
           { label: "Type package name", value: "type" },
           { label: "Pick from installed packages", value: "pick" },
           { label: "Clear package filter", value: "clear" },
-        ],
-        { placeHolder: "How to set package filter?" }
+        ].filter((item): item is { label: string; description?: string; value: string } => Boolean(item)),
+        { placeHolder: "How should Logcat pick a package filter?", title: "Logcat Package Filter" }
       );
 
       if (!inputMethod) return;
 
       if (inputMethod.value === "clear") {
-        logcatProvider.setPackageFilter(undefined);
-        vscode.window.showInformationMessage("Package filter cleared");
+        logcatProvider.setPackageFilter(undefined, undefined);
         return;
       }
 
       let packageName: string | undefined;
 
-      if (inputMethod.value === "type") {
+      if (inputMethod.value === "current") {
+        packageName = currentAppPackage;
+      } else if (inputMethod.value === "type") {
         packageName = await vscode.window.showInputBox({
           prompt: "Enter package name",
           placeHolder: "com.example.myapp",
@@ -167,7 +304,6 @@ export function registerLogcatCommands(
       const pid = await adbService.getPidForPackage(serial, packageName);
       if (pid) {
         logcatProvider.setPackageFilter(packageName, pid);
-        vscode.window.showInformationMessage(`Filtering logcat by ${packageName} (PID: ${pid})`);
       } else {
         logcatProvider.setPackageFilter(packageName);
         vscode.window.showWarningMessage(

@@ -25,8 +25,8 @@ export function registerCommandMenu(context: vscode.ExtensionContext): void {
           command: ANDROID_DEVKIT_COMMANDS.openSdkManager,
         },
         {
-          label: "$(vm) AVD Manager",
-          description: "Manage virtual devices",
+          label: "$(vm) Android Virtual Devices",
+          description: "Create and manage Android virtual devices",
           command: ANDROID_DEVKIT_COMMANDS.focusAvdManager,
         },
         {

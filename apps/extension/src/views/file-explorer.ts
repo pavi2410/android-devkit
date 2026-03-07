@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
+import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
 
 type FileEntry = {
   name: string;
@@ -17,7 +18,9 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileExplore
 
   private currentDevice?: string;
 
-  constructor(private adbService: AdbService) {}
+  constructor(private adbService: AdbService) {
+    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.fileExplorerHasDevice, false);
+  }
 
   refresh(): void {
     this._onDidChangeTreeData.fire();
@@ -25,7 +28,18 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileExplore
 
   setDevice(serial: string): void {
     this.currentDevice = serial;
+    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.fileExplorerHasDevice, true);
     this.refresh();
+  }
+
+  clearDevice(): void {
+    this.currentDevice = undefined;
+    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.fileExplorerHasDevice, false);
+    this.refresh();
+  }
+
+  getCurrentDevice(): string | undefined {
+    return this.currentDevice;
   }
 
   getTreeItem(element: FileExplorerItem): vscode.TreeItem {
@@ -34,7 +48,7 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileExplore
 
   async getChildren(element?: FileExplorerItem): Promise<FileExplorerItem[]> {
     if (!this.currentDevice) {
-      return [new MessageItem("Select a device to browse files")];
+      return [];
     }
 
     // MessageItem has no children

@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 import type { SdkService, Avd, AvdServices } from "../services/sdk";
 import type { AdbService } from "../services/adb";
-import { ANDROID_DEVKIT_COMMANDS } from "../commands/ids";
+import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
 
-type AvdManagerTreeItem = AvdItem | PropertyItem | NoSdkItem | NoAvdsItem | ErrorItem;
+type AvdManagerTreeItem = AvdItem | PropertyItem | ErrorItem;
 
 function getAvdServicesLabel(services: AvdServices | undefined): string {
   switch (services) {
@@ -31,6 +31,12 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
   ) {
     sdkService.onAvdsChanged(() => this.refresh());
     adbService.onDevicesChanged(() => this.refreshRunningState());
+    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
+    void vscode.commands.executeCommand(
+      VS_CODE_COMMANDS.setContext,
+      CONTEXT_KEYS.sdkConfigured,
+      Boolean(this.sdkService.getSdkPath())
+    );
     this.startPolling();
   }
 
@@ -65,15 +71,20 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
 
     if (element) return [];
 
-    if (!this.sdkService.getSdkPath()) {
-      return [new NoSdkItem()];
+    const sdkConfigured = Boolean(this.sdkService.getSdkPath());
+    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.sdkConfigured, sdkConfigured);
+
+    if (!sdkConfigured) {
+      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
+      return [];
     }
 
     try {
       this.avds = await this.sdkService.listAvds();
+      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, this.avds.length > 0);
 
       if (this.avds.length === 0) {
-        return [new NoAvdsItem()];
+        return [];
       }
 
       return this.avds.map((avd) => {
@@ -82,6 +93,7 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
+      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
       return [new ErrorItem(msg)];
     }
   }
@@ -192,24 +204,6 @@ class PropertyItem extends vscode.TreeItem {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.description = value;
     this.iconPath = new vscode.ThemeIcon("symbol-property");
-  }
-}
-
-class NoSdkItem extends vscode.TreeItem {
-  constructor() {
-    super("Android SDK not configured", vscode.TreeItemCollapsibleState.None);
-    this.iconPath = new vscode.ThemeIcon("warning");
-    this.tooltip = "Configure androidDevkit.sdkPath or set ANDROID_HOME";
-    this.command = { command: ANDROID_DEVKIT_COMMANDS.showSdkInfo, title: "Open Setup" };
-  }
-}
-
-class NoAvdsItem extends vscode.TreeItem {
-  constructor() {
-    super("No virtual devices", vscode.TreeItemCollapsibleState.None);
-    this.iconPath = new vscode.ThemeIcon("info");
-    this.tooltip = "Create a new AVD to get started";
-    this.command = { command: ANDROID_DEVKIT_COMMANDS.createAvd, title: "Create AVD" };
   }
 }
 

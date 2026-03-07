@@ -3,6 +3,7 @@ import {
   LogcatStream,
   clearLogcat,
   type LogcatEntry,
+  type LogcatOptions,
 } from "@android-devkit/logcat";
 import type { AdbService } from "./adb";
 
@@ -22,13 +23,15 @@ export class LogcatService implements vscode.Disposable {
     return this.stream?.isRunning ?? false;
   }
 
-  start(serial?: string, tags?: string[]): void {
+  start(options: Pick<LogcatOptions, "minLevel" | "pid" | "serial" | "tags"> = {}): void {
     this.stop();
 
     const stream = new LogcatStream({
       adbPath: this.adbService.getAdbPathPublic(),
-      serial,
-      tags,
+      minLevel: options.minLevel,
+      pid: options.pid,
+      serial: options.serial,
+      tags: options.tags,
     });
 
     stream.on("entry", (entry: LogcatEntry) => {

@@ -39,6 +39,7 @@ export class LogcatStream extends EventEmitter {
   private readonly adbPath: string;
   private readonly serial?: string;
   private readonly minLevel: LogLevel;
+  private readonly pid?: number;
   private readonly tags: string[];
   private buffer = "";
 
@@ -47,6 +48,7 @@ export class LogcatStream extends EventEmitter {
     this.adbPath = options.adbPath ?? "adb";
     this.serial = options.serial;
     this.minLevel = options.minLevel ?? "V";
+    this.pid = options.pid;
     this.tags = options.tags ?? [];
   }
 
@@ -56,12 +58,15 @@ export class LogcatStream extends EventEmitter {
     const args: string[] = [];
     if (this.serial) args.push("-s", this.serial);
     args.push("logcat", "-v", "threadtime");
+    if (this.pid) args.push(`--pid=${this.pid}`);
 
     if (this.tags.length > 0) {
       for (const tag of this.tags) {
         args.push(`${tag}:${this.minLevel}`);
       }
       args.push("*:S");
+    } else {
+      args.push(`*:${this.minLevel}`);
     }
 
     const proc = spawnCommand({ command: this.adbPath, args });

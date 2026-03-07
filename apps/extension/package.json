@@ -44,17 +44,17 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "android-devkit",
-          "title": "Android DevKit",
+          "id": "androidDevkit-devices",
+          "title": "Android Devices",
           "icon": "$(device-mobile)"
         },
         {
-          "id": "android-devkit-sdk",
-          "title": "Android SDK",
+          "id": "androidDevkit-avd",
+          "title": "Android Virtual Devices",
           "icon": "$(package)"
         },
         {
-          "id": "android-devkit-build",
+          "id": "androidDevkit-build",
           "title": "Android Build",
           "icon": "$(tools)"
         }
@@ -69,7 +69,7 @@
           "contextualTitle": "Android Project"
         }
       ],
-      "android-devkit": [
+      "androidDevkit-devices": [
         {
           "id": "androidDevkit.devices",
           "name": "Devices",
@@ -92,15 +92,15 @@
           "visibility": "collapsed"
         }
       ],
-      "android-devkit-sdk": [
+      "androidDevkit-avd": [
         {
           "id": "androidDevkit.avdManager",
-          "name": "AVD Manager",
+          "name": "Android Virtual Devices",
           "icon": "$(vm)",
           "contextualTitle": "Android Virtual Devices"
         }
       ],
-      "android-devkit-build": [
+      "androidDevkit-build": [
         {
           "id": "androidDevkit.buildRun",
           "name": "Build & Run",
@@ -173,8 +173,14 @@
       },
       {
         "command": "androidDevkit.startLogcat",
-        "title": "Start Logcat",
+        "title": "Start or Resume Logcat",
         "icon": "$(play)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.pauseLogcat",
+        "title": "Pause Logcat",
+        "icon": "$(debug-pause)",
         "category": "Android DevKit"
       },
       {
@@ -187,6 +193,18 @@
         "command": "androidDevkit.clearLogcat",
         "title": "Clear Logcat",
         "icon": "$(clear-all)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.showLogcatOutput",
+        "title": "Show Logcat Output",
+        "icon": "$(output)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.logcatStatusMenu",
+        "title": "Logcat Controls",
+        "icon": "$(output)",
         "category": "Android DevKit"
       },
       {
@@ -394,27 +412,37 @@
         },
         {
           "command": "androidDevkit.startLogcat",
-          "when": "view == androidDevkit.logcat && !androidDevkit.logcatRunning",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices && !androidDevkit.logcatRunning",
           "group": "navigation"
         },
         {
-          "command": "androidDevkit.stopLogcat",
+          "command": "androidDevkit.pauseLogcat",
           "when": "view == androidDevkit.logcat && androidDevkit.logcatRunning",
           "group": "navigation"
         },
         {
+          "command": "androidDevkit.stopLogcat",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices && (androidDevkit.logcatRunning || androidDevkit.logcatPaused)",
+          "group": "navigation"
+        },
+        {
           "command": "androidDevkit.clearLogcat",
-          "when": "view == androidDevkit.logcat",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.showLogcatOutput",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
           "group": "navigation"
         },
         {
           "command": "androidDevkit.setLogcatFilter",
-          "when": "view == androidDevkit.logcat",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
           "group": "navigation"
         },
         {
           "command": "androidDevkit.setLogcatPackageFilter",
-          "when": "view == androidDevkit.logcat",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
           "group": "navigation"
         },
         {
@@ -429,6 +457,11 @@
         },
         {
           "command": "androidDevkit.createAvd",
+          "when": "view == androidDevkit.avdManager",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.openSdkManager",
           "when": "view == androidDevkit.avdManager",
           "group": "navigation"
         },
@@ -521,6 +554,38 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "androidDevkit.devices",
+        "contents": "No devices or emulators are connected.\n\n[Connect Device (TCP/IP)](command:androidDevkit.connectDevice)\n\n[Pair Device (Wireless Debugging)](command:androidDevkit.pairDevice)\n\n[Open Android Virtual Devices](command:androidDevkit.avdManager.focus)",
+        "when": "!androidDevkit.hasDevices"
+      },
+      {
+        "view": "androidDevkit.logcat",
+        "contents": "Connect a device or start an emulator to use Logcat.\n\n[Open Android Virtual Devices](command:androidDevkit.avdManager.focus)\n\n[Connect Device (TCP/IP)](command:androidDevkit.connectDevice)",
+        "when": "!androidDevkit.hasDevices"
+      },
+      {
+        "view": "androidDevkit.logcat",
+        "contents": "Start a Logcat session with safer defaults.\n\n[Start Logcat](command:androidDevkit.startLogcat)\n\n[Choose Package Filter](command:androidDevkit.setLogcatPackageFilter)\n\n[Show Output](command:androidDevkit.showLogcatOutput)",
+        "when": "androidDevkit.hasDevices && !androidDevkit.logcatRunning && !androidDevkit.logcatPaused"
+      },
+      {
+        "view": "androidDevkit.fileExplorer",
+        "contents": "Select a device first, then open its files here.\n\n[Choose Device for File Explorer](command:androidDevkit.browseFiles)\n\n[Open Devices](command:androidDevkit.devices.focus)",
+        "when": "!androidDevkit.fileExplorerHasDevice"
+      },
+      {
+        "view": "androidDevkit.avdManager",
+        "contents": "Android DevKit needs an SDK path before it can manage Android virtual devices.\n\n[Open SDK Setup](command:androidDevkit.showSdkInfo)\n\n[Open SDK Manager](command:androidDevkit.openSdkManager)",
+        "when": "!androidDevkit.sdkConfigured"
+      },
+      {
+        "view": "androidDevkit.avdManager",
+        "contents": "No Android virtual devices are configured yet.\n\n[Create Virtual Device](command:androidDevkit.createAvd)\n\n[Open SDK Manager](command:androidDevkit.openSdkManager)",
+        "when": "androidDevkit.sdkConfigured && !androidDevkit.hasAvds"
+      }
+    ],
     "configuration": {
       "title": "Android DevKit",
       "properties": {
@@ -581,7 +646,7 @@
           {
             "id": "createAvd",
             "title": "Create a Virtual Device",
-            "description": "Create, launch, and manage Android Virtual Devices (AVDs) for testing your apps.\n\n[Open AVD Manager](command:androidDevkit.avdManager.focus)",
+            "description": "Create, launch, and manage Android Virtual Devices (AVDs) for testing your apps.\n\n[Open Android Virtual Devices](command:androidDevkit.avdManager.focus)",
             "media": { "markdown": "media/walkthroughs/createAvd.md" },
             "completionEvents": ["onView:androidDevkit.avdManager"]
           },

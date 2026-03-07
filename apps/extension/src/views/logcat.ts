@@ -3,18 +3,29 @@ import type { LogcatEntry, LogLevel } from "@android-devkit/logcat";
 import type { LogcatService } from "../services/logcat";
 import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
 
+type LogcatSessionState = "stopped" | "running" | "paused";
+
+interface LogcatSessionOptions {
+  deviceLabel?: string;
+  minLevel: LogLevel;
+  packageName?: string;
+  pid?: number;
+  serial?: string;
+}
+
 export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<LogcatTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private _onDidSessionChange = new vscode.EventEmitter<void>();
+  readonly onDidSessionChange = this._onDidSessionChange.event;
 
   private outputChannel: vscode.LogOutputChannel;
   private entries: LogcatEntry[] = [];
   private maxEntries: number;
-  private currentDevice?: string;
   private filter?: string;
-  private minLevel: LogLevel = "V";
-  private packageFilter?: string;
-  private pidFilter?: number;
+  private hasAvailableDevices = false;
+  private session: LogcatSessionOptions = { minLevel: "I" };
+  private sessionState: LogcatSessionState = "stopped";
 
   constructor(private logcatService: LogcatService) {
     this.outputChannel = vscode.window.createOutputChannel("ADK: Logcat", { log: true });
@@ -30,9 +41,16 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     });
 
     logcatService.onStateChanged((running) => {
-      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.logcatRunning, running);
+      if (running) {
+        this.sessionState = "running";
+      } else if (this.sessionState !== "paused") {
+        this.sessionState = "stopped";
+      }
+      this.emitSessionChange();
       this.refresh();
     });
+
+    this.emitSessionChange();
   }
 
   refresh(): void {
@@ -46,14 +64,26 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   async getChildren(element?: LogcatTreeItem): Promise<LogcatTreeItem[]> {
     if (element) return [];
 
+    if (!this.hasAvailableDevices) {
+      return [];
+    }
+
+    if (this.sessionState === "stopped" && this.entries.length === 0 && !this.filter && !this.session.packageName) {
+      return [];
+    }
+
     const items: LogcatTreeItem[] = [];
 
     // Status item
-    if (this.logcatService.isRunning) {
-      items.push(new StatusItem("Running", this.currentDevice ?? "All devices", "play"));
+    if (this.sessionState === "running") {
+      items.push(new StatusItem("Running", this.session.deviceLabel ?? this.session.serial ?? "All devices", "play"));
+    } else if (this.sessionState === "paused") {
+      items.push(new StatusItem("Paused", this.session.deviceLabel ?? this.session.serial ?? "All devices", "debug-pause"));
     } else {
       items.push(new StatusItem("Stopped", "Click play to start", "debug-stop"));
     }
+
+    items.push(new LevelItem(this.session.minLevel));
 
     // Filter item
     if (this.filter) {
@@ -61,10 +91,10 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     }
 
     // Package filter item
-    if (this.packageFilter) {
-      const desc = this.pidFilter
-        ? `${this.packageFilter} (PID: ${this.pidFilter})`
-        : `${this.packageFilter} (not running)`;
+    if (this.session.packageName) {
+      const desc = this.session.pid
+        ? `${this.session.packageName} (PID: ${this.session.pid})`
+        : `${this.session.packageName} (PID unavailable)`;
       items.push(new PackageFilterItem(desc));
     }
 
@@ -80,7 +110,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private addEntry(entry: LogcatEntry): void {
     // Check level filter
     const levels: LogLevel[] = ["V", "D", "I", "W", "E", "F", "S"];
-    if (levels.indexOf(entry.level) < levels.indexOf(this.minLevel)) {
+    if (levels.indexOf(entry.level) < levels.indexOf(this.session.minLevel)) {
       return;
     }
 
@@ -96,7 +126,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     }
 
     // Check package/PID filter
-    if (this.pidFilter && entry.pid !== this.pidFilter) {
+    if (this.session.pid && entry.pid !== this.session.pid) {
       return;
     }
 
@@ -148,21 +178,81 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     }
   }
 
+  getSession(): Readonly<LogcatSessionOptions> {
+    return this.session;
+  }
+
+  getSessionState(): LogcatSessionState {
+    return this.sessionState;
+  }
+
+  setHasAvailableDevices(hasAvailableDevices: boolean): void {
+    this.hasAvailableDevices = hasAvailableDevices;
+    if (!hasAvailableDevices && this.sessionState !== "stopped") {
+      this.stop();
+      return;
+    }
+
+    this.emitSessionChange();
+    this.refresh();
+  }
+
+  private emitSessionChange(): void {
+    void vscode.commands.executeCommand(
+      VS_CODE_COMMANDS.setContext,
+      CONTEXT_KEYS.logcatPaused,
+      this.sessionState === "paused"
+    );
+    void vscode.commands.executeCommand(
+      VS_CODE_COMMANDS.setContext,
+      CONTEXT_KEYS.logcatRunning,
+      this.sessionState === "running"
+    );
+    this._onDidSessionChange.fire();
+  }
+
   /**
    * Start logcat streaming
    */
-  start(device?: string, tags?: string[]): void {
-    this.currentDevice = device;
+  start(options: Partial<LogcatSessionOptions> = {}): void {
+    this.session = {
+      ...this.session,
+      ...options,
+      minLevel: options.minLevel ?? this.session.minLevel,
+    };
+    this.sessionState = "running";
     this.outputChannel.show(true);
-    this.logcatService.start(device, tags);
+    this.logcatService.start({
+      minLevel: this.session.minLevel,
+      pid: this.session.pid,
+      serial: this.session.serial,
+    });
+    this.emitSessionChange();
     this.refresh();
+  }
+
+  pause(): void {
+    if (this.sessionState !== "running") {
+      return;
+    }
+
+    this.sessionState = "paused";
+    this.logcatService.stop();
+    this.emitSessionChange();
+    this.refresh();
+  }
+
+  resume(): void {
+    this.start();
   }
 
   /**
    * Stop logcat streaming
    */
   stop(): void {
+    this.sessionState = "stopped";
     this.logcatService.stop();
+    this.emitSessionChange();
     this.refresh();
   }
 
@@ -172,7 +262,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   async clear(device?: string): Promise<void> {
     this.entries = [];
     this.outputChannel.clear();
-    await this.logcatService.clear(device ?? this.currentDevice);
+    await this.logcatService.clear(device ?? this.session.serial);
     this.refresh();
   }
 
@@ -181,6 +271,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    */
   setFilter(filter?: string): void {
     this.filter = filter;
+    this.emitSessionChange();
     this.refresh();
   }
 
@@ -188,7 +279,13 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    * Set minimum log level
    */
   setMinLevel(level: LogLevel): void {
-    this.minLevel = level;
+    this.session = { ...this.session, minLevel: level };
+    if (this.sessionState === "running") {
+      this.start({ minLevel: level });
+      return;
+    }
+
+    this.emitSessionChange();
     this.refresh();
   }
 
@@ -196,8 +293,13 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    * Set package name filter (optionally with resolved PID)
    */
   setPackageFilter(packageName?: string, pid?: number): void {
-    this.packageFilter = packageName;
-    this.pidFilter = pid;
+    this.session = { ...this.session, packageName, pid };
+    if (this.sessionState === "running") {
+      this.start({ packageName, pid });
+      return;
+    }
+
+    this.emitSessionChange();
     this.refresh();
   }
 
@@ -210,6 +312,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
 
   dispose(): void {
     this.outputChannel.dispose();
+    this._onDidSessionChange.dispose();
     this._onDidChangeTreeData.dispose();
   }
 }
@@ -229,6 +332,14 @@ class FilterItem extends LogcatTreeItem {
     super("Filter", vscode.TreeItemCollapsibleState.None);
     this.description = filter;
     this.iconPath = new vscode.ThemeIcon("filter");
+  }
+}
+
+class LevelItem extends LogcatTreeItem {
+  constructor(level: LogLevel) {
+    super("Level", vscode.TreeItemCollapsibleState.None);
+    this.description = level;
+    this.iconPath = new vscode.ThemeIcon("symbol-enum");
   }
 }
 
