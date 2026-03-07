@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import type { SdkService, Avd, AvdServices } from "../services/sdk";
 import type { AdbService } from "../services/adb";
-import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
+import { CONTEXT_KEYS } from "../commands/ids";
+import { setAndroidDevkitContext } from "../config/context";
 
 type AvdManagerTreeItem = AvdItem | PropertyItem | ErrorItem;
 
@@ -31,12 +32,8 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
   ) {
     sdkService.onAvdsChanged(() => this.refresh());
     adbService.onDevicesChanged(() => this.refreshRunningState());
-    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
-    void vscode.commands.executeCommand(
-      VS_CODE_COMMANDS.setContext,
-      CONTEXT_KEYS.sdkConfigured,
-      Boolean(this.sdkService.getSdkPath())
-    );
+    void setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, false);
+    void setAndroidDevkitContext(CONTEXT_KEYS.sdkConfigured, Boolean(this.sdkService.getSdkPath()));
     this.startPolling();
   }
 
@@ -72,16 +69,16 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
     if (element) return [];
 
     const sdkConfigured = Boolean(this.sdkService.getSdkPath());
-    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.sdkConfigured, sdkConfigured);
+    void setAndroidDevkitContext(CONTEXT_KEYS.sdkConfigured, sdkConfigured);
 
     if (!sdkConfigured) {
-      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
+      void setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, false);
       return [];
     }
 
     try {
       this.avds = await this.sdkService.listAvds();
-      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, this.avds.length > 0);
+      void setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, this.avds.length > 0);
 
       if (this.avds.length === 0) {
         return [];
@@ -93,7 +90,7 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
-      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
+      void setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, false);
       return [new ErrorItem(msg)];
     }
   }

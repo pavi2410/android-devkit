@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { resolveAndroidSdkPath } from "@android-devkit/android-sdk";
+import { getConfiguredSdkPath } from "../config/settings";
 import {
   getSdkManagerPath,
   listSdkPackages,
@@ -35,8 +36,7 @@ export class SdkService {
   readonly onAvdsChanged = this._onAvdsChanged.event;
  
   getSdkPath(): string | undefined {
-    const config = vscode.workspace.getConfiguration("androidDevkit");
-    return resolveAndroidSdkPath({ configuredPath: config.get<string>("sdkPath") });
+    return resolveAndroidSdkPath({ configuredPath: getConfiguredSdkPath() });
   }
 
   getSdkManagerPath(): string | undefined {

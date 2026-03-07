@@ -14,6 +14,7 @@ import { registerGradleCommands } from "./commands/gradle";
 import { registerRunCommands } from "./commands/run";
 import { registerCoreCommands } from "./commands/core";
 import { ANDROID_DEVKIT_COMMANDS, CONTEXT_KEYS, VS_CODE_COMMANDS } from "./commands/ids";
+import { setAndroidDevkitContext } from "./config/context";
 import { AdbService } from "./services/adb";
 import { SdkService } from "./services/sdk";
 import { GradleService } from "./services/gradle";
@@ -83,25 +84,25 @@ export function activate(context: vscode.ExtensionContext) {
 
   const refreshAvdWelcomeState = async () => {
     const sdkConfigured = Boolean(sdkService.getSdkPath());
-    await vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.sdkConfigured, sdkConfigured);
+    await setAndroidDevkitContext(CONTEXT_KEYS.sdkConfigured, sdkConfigured);
 
     if (!sdkConfigured) {
-      await vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
+      await setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, false);
       return;
     }
 
     try {
       const avds = await sdkService.listAvds();
-      await vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, avds.length > 0);
+      await setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, avds.length > 0);
     } catch {
-      await vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasAvds, false);
+      await setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, false);
     }
   };
 
   const refreshDeviceDerivedUi = async () => {
     try {
       const devices = await adbService.getDevices();
-      await vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasDevices, devices.length > 0);
+      await setAndroidDevkitContext(CONTEXT_KEYS.hasDevices, devices.length > 0);
 
       const readyDevices = devices.filter((device) => device.state === "device");
       const readySerials = new Set(readyDevices.map((device) => device.serial));
@@ -125,7 +126,7 @@ export function activate(context: vscode.ExtensionContext) {
         fileExplorerProvider.clearDevice();
       }
     } catch {
-      await vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasDevices, false);
+      await setAndroidDevkitContext(CONTEXT_KEYS.hasDevices, false);
       logcatProvider.setHasAvailableDevices(false);
       logcatStatusBar.hide();
     }

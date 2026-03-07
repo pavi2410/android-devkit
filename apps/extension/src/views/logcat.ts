@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
 import type { LogcatEntry, LogLevel } from "@android-devkit/logcat";
 import type { LogcatService } from "../services/logcat";
-import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
+import { CONTEXT_KEYS } from "../commands/ids";
+import { setAndroidDevkitContext } from "../config/context";
+import { getLogcatDefaultLogLevel, getLogcatMaxLines } from "../config/settings";
 
 type LogcatSessionState = "stopped" | "running" | "paused";
 
@@ -14,7 +16,7 @@ interface LogcatSessionOptions {
 }
 
 function getDefaultLogLevel(): LogLevel {
-  return vscode.workspace.getConfiguration("androidDevkit").get<LogLevel>("logcat.defaultLogLevel", "I");
+  return getLogcatDefaultLogLevel();
 }
 
 export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeItem> {
@@ -33,7 +35,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
 
   constructor(private logcatService: LogcatService) {
     this.outputChannel = vscode.window.createOutputChannel("ADK: Logcat", { log: true });
-    this.maxEntries = vscode.workspace.getConfiguration("androidDevkit").get("logcat.maxLines", 10000);
+    this.maxEntries = getLogcatMaxLines();
     this.session = { minLevel: getDefaultLogLevel() };
 
     // Listen for logcat entries
@@ -203,16 +205,8 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   }
 
   private emitSessionChange(): void {
-    void vscode.commands.executeCommand(
-      VS_CODE_COMMANDS.setContext,
-      CONTEXT_KEYS.logcatPaused,
-      this.sessionState === "paused"
-    );
-    void vscode.commands.executeCommand(
-      VS_CODE_COMMANDS.setContext,
-      CONTEXT_KEYS.logcatRunning,
-      this.sessionState === "running"
-    );
+    void setAndroidDevkitContext(CONTEXT_KEYS.logcatPaused, this.sessionState === "paused");
+    void setAndroidDevkitContext(CONTEXT_KEYS.logcatRunning, this.sessionState === "running");
     this._onDidSessionChange.fire();
   }
 

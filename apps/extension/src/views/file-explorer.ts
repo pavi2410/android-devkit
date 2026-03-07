@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
-import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
+import { CONTEXT_KEYS } from "../commands/ids";
+import { setAndroidDevkitContext } from "../config/context";
 
 type FileEntry = {
   name: string;
@@ -19,7 +20,7 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileExplore
   private currentDevice?: string;
 
   constructor(private adbService: AdbService) {
-    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.fileExplorerHasDevice, false);
+    void setAndroidDevkitContext(CONTEXT_KEYS.fileExplorerHasDevice, false);
   }
 
   refresh(): void {
@@ -28,13 +29,13 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileExplore
 
   setDevice(serial: string): void {
     this.currentDevice = serial;
-    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.fileExplorerHasDevice, true);
+    void setAndroidDevkitContext(CONTEXT_KEYS.fileExplorerHasDevice, true);
     this.refresh();
   }
 
   clearDevice(): void {
     this.currentDevice = undefined;
-    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.fileExplorerHasDevice, false);
+    void setAndroidDevkitContext(CONTEXT_KEYS.fileExplorerHasDevice, false);
     this.refresh();
   }
 

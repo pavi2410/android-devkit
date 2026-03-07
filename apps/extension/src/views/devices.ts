@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { AdbService, DeviceInfo } from "../services/adb";
-import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
+import { CONTEXT_KEYS } from "../commands/ids";
+import { setAndroidDevkitContext } from "../config/context";
 
 type DevicesTreeItem = DeviceTreeItem | PropertyItem | ErrorItem;
 
@@ -13,7 +14,7 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeI
   constructor(private adbService: AdbService) {
     // Listen for device changes
     adbService.onDevicesChanged(() => this.refresh());
-    void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasDevices, false);
+    void setAndroidDevkitContext(CONTEXT_KEYS.hasDevices, false);
   }
 
   refresh(): void {
@@ -35,11 +36,7 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeI
     // Root level - list devices
     try {
       this.devices = await this.adbService.getDevices();
-      void vscode.commands.executeCommand(
-        VS_CODE_COMMANDS.setContext,
-        CONTEXT_KEYS.hasDevices,
-        this.devices.length > 0
-      );
+      void setAndroidDevkitContext(CONTEXT_KEYS.hasDevices, this.devices.length > 0);
 
       if (this.devices.length === 0) {
         return [];
@@ -48,7 +45,7 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeI
       return this.devices.map((device) => new DeviceTreeItem(device));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.hasDevices, false);
+      void setAndroidDevkitContext(CONTEXT_KEYS.hasDevices, false);
       vscode.window.showErrorMessage(`Failed to list devices: ${message}`);
       return [new ErrorItem(message)];
     }

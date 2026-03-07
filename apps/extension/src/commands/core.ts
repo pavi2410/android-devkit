@@ -3,9 +3,14 @@ import { SdkManagerPanel } from "../webviews/sdk-manager";
 import type { AdbService } from "../services/adb";
 import type { SdkService } from "../services/sdk";
 import { applyTerminalEnv } from "../services/terminal-env";
+import {
+  ANDROID_DEVKIT_SETTINGS,
+  openAndroidDevkitSetting,
+  updateConfiguredSdkPath,
+} from "../config/settings";
 import type { FileExplorerProvider } from "../views/file-explorer";
 import type { ProjectLayoutProvider } from "../views/project-layout";
-import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS } from "./ids";
+import { ANDROID_DEVKIT_COMMANDS } from "./ids";
 
 interface RegisterCoreCommandsOptions {
   adbService: AdbService;
@@ -25,7 +30,7 @@ async function promptForSdkPath(): Promise<string | undefined> {
 }
 
 async function updateSdkPath(fsPath: string): Promise<void> {
-  await vscode.workspace.getConfiguration("androidDevkit").update("sdkPath", fsPath, true);
+  await updateConfiguredSdkPath(fsPath);
   vscode.window.showInformationMessage("SDK path updated. Reload to apply.");
 }
 
@@ -108,7 +113,7 @@ export function registerCoreCommands(
             await updateSdkPath(selectedPath);
           }
         } else if (action === "Open Settings") {
-          vscode.commands.executeCommand(VS_CODE_COMMANDS.openSettings, "androidDevkit.sdkPath");
+          openAndroidDevkitSetting(ANDROID_DEVKIT_SETTINGS.sdkPath);
         }
         return;
       }
@@ -128,7 +133,7 @@ export function registerCoreCommands(
           await updateSdkPath(selectedPath);
         }
       } else if (action === "Open Settings") {
-        vscode.commands.executeCommand(VS_CODE_COMMANDS.openSettings, "androidDevkit.sdkPath");
+        openAndroidDevkitSetting(ANDROID_DEVKIT_SETTINGS.sdkPath);
       }
     }),
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.addToTerminalPath, () => {
