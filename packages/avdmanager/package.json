@@ -1,5 +1,5 @@
 {
-  "name": "@android-devkit/avd",
+  "name": "@android-devkit/avdmanager",
   "version": "0.1.0",
   "description": "Android Virtual Device Manager (avdmanager + emulator) wrapper library",
   "type": "module",
@@ -17,6 +17,9 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@android-devkit/tool-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.0.0"

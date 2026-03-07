@@ -104,15 +104,6 @@ export function getAvdManagerPath(sdkPath: string): string | undefined {
 }
 
 /**
- * Resolve emulator path from the SDK root.
- */
-export function getEmulatorPath(sdkPath: string): string | undefined {
-  const ext = process.platform === "win32" ? ".exe" : "";
-  const p = path.join(sdkPath, "emulator", `emulator${ext}`);
-  return fs.existsSync(p) ? p : undefined;
-}
-
-/**
  * Parse `avdmanager list avd` output into Avd[].
  */
 export function parseAvdList(output: string): Avd[] {
@@ -336,40 +327,4 @@ export async function deleteAvd(sdkPath: string, name: string): Promise<void> {
     shell: shouldUseShell,
     env: getAvdToolEnv(),
   });
-}
-
-/**
- * Launch an AVD in the emulator (fire-and-forget, detached).
- */
-export function launchAvd(sdkPath: string, name: string): void {
-  const emulatorPath = getEmulatorPath(sdkPath);
-  if (!emulatorPath) {
-    throw new Error(`emulator not found in SDK at: ${sdkPath}`);
-  }
-
-  const proc = spawn(emulatorPath, ["-avd", name], {
-    detached: true,
-    stdio: "ignore",
-    env: { ...process.env, ANDROID_SDK_ROOT: sdkPath },
-  });
-
-  proc.unref();
-}
-
-/**
- * Wipe AVD user data by launching emulator with -wipe-data flag.
- */
-export function wipeAvdData(sdkPath: string, name: string): void {
-  const emulatorPath = getEmulatorPath(sdkPath);
-  if (!emulatorPath) {
-    throw new Error(`emulator not found in SDK at: ${sdkPath}`);
-  }
-
-  const proc = spawn(emulatorPath, ["-avd", name, "-wipe-data", "-no-window"], {
-    detached: true,
-    stdio: "ignore",
-    env: { ...process.env, ANDROID_SDK_ROOT: sdkPath },
-  });
-
-  proc.unref();
 }

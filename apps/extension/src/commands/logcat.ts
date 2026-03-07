@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
 import type { LogcatTreeProvider } from "../views/logcat";
-import type { LogLevel } from "@android-devkit/adb";
+import type { LogLevel } from "@android-devkit/logcat";
 
 export function registerLogcatCommands(
   context: vscode.ExtensionContext,

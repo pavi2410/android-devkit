@@ -26,22 +26,12 @@ export {
   deleteFile,
 } from "./devices.js";
 
-// Logcat
-export {
-  LogcatStream,
-  clearLogcat,
-  getLogcat,
-  type LogcatOptions,
-} from "./logcat.js";
-
 // Types
 export type {
   Device,
   DeviceState,
   ConnectionType,
   TransportType,
-  LogLevel,
-  LogcatEntry,
   AdbOptions,
   AdbResult,
 } from "./types.js";

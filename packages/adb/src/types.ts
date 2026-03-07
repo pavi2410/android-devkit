@@ -45,29 +45,6 @@ export interface Device {
 }
 
 /**
- * Logcat log level
- */
-export type LogLevel = "V" | "D" | "I" | "W" | "E" | "F" | "S";
-
-/**
- * A parsed logcat entry
- */
-export interface LogcatEntry {
-  /** Log timestamp */
-  timestamp: Date;
-  /** Process ID */
-  pid: number;
-  /** Thread ID */
-  tid: number;
-  /** Log level */
-  level: LogLevel;
-  /** Log tag */
-  tag: string;
-  /** Log message */
-  message: string;
-}
-
-/**
  * Options for running ADB commands
  */
 export interface AdbOptions {

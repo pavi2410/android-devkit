@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
-import type { LogcatEntry, LogLevel } from "@android-devkit/adb";
+import type { LogcatEntry, LogLevel } from "@android-devkit/logcat";
 
 export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<LogcatTreeItem | undefined | null | void>();

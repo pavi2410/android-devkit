@@ -8,20 +8,22 @@ import {
   uninstallSdkPackage,
   updateAllSdkPackages,
   type SdkPackage,
-} from "@android-devkit/sdk";
+} from "@android-devkit/sdkmanager";
 import {
   getAvdManagerPath,
-  getEmulatorPath,
   listAvds,
   listDeviceProfiles,
   createAvd,
   deleteAvd,
-  launchAvd,
-  wipeAvdData,
   type Avd,
   type DeviceProfile,
   type CreateAvdOptions,
-} from "@android-devkit/avd";
+} from "@android-devkit/avdmanager";
+import {
+  getEmulatorPath,
+  launchAvd,
+  wipeAvdData,
+} from "@android-devkit/emulator";
 
 export type { SdkPackage, Avd, DeviceProfile, CreateAvdOptions };
 

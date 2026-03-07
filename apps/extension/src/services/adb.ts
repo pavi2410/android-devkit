@@ -15,8 +15,6 @@ import {
   installApk,
   launchApp,
   forceStopApp,
-  LogcatStream,
-  clearLogcat,
   pairDevice,
   listMdnsServices,
   isMdnsSupported,
@@ -28,8 +26,12 @@ import {
   pushFile,
   deleteFile,
   type Device,
-  type LogcatEntry,
 } from "@android-devkit/adb";
+import {
+  LogcatStream,
+  clearLogcat,
+  type LogcatEntry,
+} from "@android-devkit/logcat";
 
 export interface DeviceInfo extends Device {
   name: string;

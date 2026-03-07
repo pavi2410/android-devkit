@@ -1,7 +1,7 @@
 {
-  "name": "@android-devkit/adb",
+  "name": "@android-devkit/logcat",
   "version": "0.1.0",
-  "description": "ADB (Android Debug Bridge) wrapper library",
+  "description": "Android logcat wrapper library",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,7 +15,6 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
