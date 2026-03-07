@@ -1,38 +1,18 @@
 import * as vscode from "vscode";
-import * as fs from "node:fs";
 import * as path from "node:path";
+import { detectAndroidAppPackage } from "@android-devkit/android-project";
 import type { GradleService } from "../services/gradle";
 import type { AdbService } from "../services/adb";
 import type { BuildRunProvider } from "../views/build-run";
 import { ANDROID_DEVKIT_COMMANDS } from "./ids";
-
-function detectAppPackage(): string | undefined {
-  const folders = vscode.workspace.workspaceFolders;
-  if (!folders || folders.length === 0) return undefined;
-
-  const root = folders[0].uri.fsPath;
-  const manifestPaths = [
-    path.join(root, "app", "src", "main", "AndroidManifest.xml"),
-    path.join(root, "src", "main", "AndroidManifest.xml"),
-    path.join(root, "AndroidManifest.xml"),
-  ];
-
-  for (const manifestPath of manifestPaths) {
-    if (!fs.existsSync(manifestPath)) continue;
-    const content = fs.readFileSync(manifestPath, "utf-8");
-    const match = content.match(/package\s*=\s*["']([^"']+)["']/);
-    if (match) return match[1];
-  }
-
-  return undefined;
-}
 
 async function resolvePackageName(): Promise<string | undefined> {
   const config = vscode.workspace.getConfiguration("androidDevkit");
   const configured = config.get<string>("appPackage");
   if (configured) return configured;
 
-  const detected = detectAppPackage();
+  const projectRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const detected = projectRoot ? detectAndroidAppPackage(projectRoot) : undefined;
   if (detected) return detected;
 
   return vscode.window.showInputBox({

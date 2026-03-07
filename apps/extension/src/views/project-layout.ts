@@ -1,6 +1,10 @@
 import * as vscode from "vscode";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import {
+  collectAndroidGradleScripts,
+  detectAndroidModules,
+  inspectAndroidModule,
+  listDirectoryChildren,
+} from "@android-devkit/android-project";
 import { VS_CODE_COMMANDS } from "../commands/ids";
 
 type ProjectLayoutItem =
@@ -86,10 +90,11 @@ export class ProjectLayoutProvider implements vscode.TreeDataProvider<ProjectLay
   }
 
   private async getRootItems(root: string): Promise<ProjectLayoutItem[]> {
-    const modules = this.detectModules(root);
+    const modules = detectAndroidModules(root);
     const items: ProjectLayoutItem[] = modules.map((m) => new ModuleItem(m.name, m.fsPath));
 
-    const gradleScripts = this.collectGradleScripts(root);
+    const gradleScripts = collectAndroidGradleScripts(root)
+      .map((script) => new GradleScriptItem(script.label, script.fsPath, script.context));
     if (gradleScripts.length > 0) {
       items.push(new GradleScriptsItem(gradleScripts));
     }
@@ -101,68 +106,26 @@ export class ProjectLayoutProvider implements vscode.TreeDataProvider<ProjectLay
     return items;
   }
 
-  private detectModules(root: string): { name: string; fsPath: string }[] {
-    const modules: { name: string; fsPath: string }[] = [];
-
-    const settingsFiles = [
-      path.join(root, "settings.gradle.kts"),
-      path.join(root, "settings.gradle"),
-    ];
-
-    let parsed = false;
-    for (const sf of settingsFiles) {
-      if (!fs.existsSync(sf)) continue;
-      const content = fs.readFileSync(sf, "utf8");
-      const includeMatches = [...content.matchAll(/include\s*\(\s*["']([^"']+)["']\s*\)/g)];
-      for (const m of includeMatches) {
-        const modPath = m[1].replace(/^:/, "").replace(/:/g, path.sep);
-        const modFsPath = path.join(root, modPath);
-        if (fs.existsSync(modFsPath)) {
-          modules.push({ name: m[1].replace(/^:/, ""), fsPath: modFsPath });
-        }
-      }
-      if (modules.length > 0) { parsed = true; break; }
-    }
-
-    if (!parsed) {
-      for (const entry of safeReadDir(root)) {
-        const full = path.join(root, entry);
-        if (
-          fs.statSync(full).isDirectory() &&
-          (fs.existsSync(path.join(full, "build.gradle.kts")) ||
-            fs.existsSync(path.join(full, "build.gradle")))
-        ) {
-          modules.push({ name: entry, fsPath: full });
-        }
-      }
-    }
-
-    return modules;
-  }
-
   private getModuleChildren(module: ModuleItem): ProjectLayoutItem[] {
+    const inspection = inspectAndroidModule(module.fsPath);
     const items: ProjectLayoutItem[] = [];
-    const srcMain = path.join(module.fsPath, "src", "main");
 
-    const manifestPath = path.join(srcMain, "AndroidManifest.xml");
-    if (fs.existsSync(manifestPath)) {
+    if (inspection.manifestPath) {
       items.push(new CategoryItem("manifests", "manifests", module.fsPath, CategoryKind.Manifests));
     }
 
-    const hasJava = fs.existsSync(path.join(srcMain, "java"));
-    const hasKotlin = fs.existsSync(path.join(srcMain, "kotlin"));
+    const hasJava = inspection.sourceRoots.some((root) => /[\\/]src[\\/]main[\\/]java[\\/]/.test(root.fsPath));
+    const hasKotlin = inspection.sourceRoots.some((root) => /[\\/]src[\\/]main[\\/]kotlin[\\/]/.test(root.fsPath));
     if (hasJava || hasKotlin) {
       const label = hasKotlin && hasJava ? "kotlin+java" : hasKotlin ? "kotlin" : "java";
       items.push(new CategoryItem(label, label, module.fsPath, CategoryKind.Sources));
     }
 
-    const resPath = path.join(srcMain, "res");
-    if (fs.existsSync(resPath)) {
+    if (inspection.resourceDirectories.length > 0) {
       items.push(new CategoryItem("res", "res", module.fsPath, CategoryKind.Res));
     }
 
-    const generatedRes = path.join(module.fsPath, "build", "generated", "res");
-    if (fs.existsSync(generatedRes)) {
+    if (inspection.generatedResourceDirectories.length > 0) {
       const cat = new CategoryItem("res (generated)", "res (generated)", module.fsPath, CategoryKind.ResGenerated);
       items.push(cat);
     }
@@ -171,155 +134,52 @@ export class ProjectLayoutProvider implements vscode.TreeDataProvider<ProjectLay
   }
 
   private getCategoryChildren(cat: CategoryItem): ProjectLayoutItem[] {
-    const srcMain = path.join(cat.moduleFsPath, "src", "main");
+    const inspection = inspectAndroidModule(cat.moduleFsPath);
 
     switch (cat.kind) {
       case CategoryKind.Manifests: {
-        const manifestPath = path.join(srcMain, "AndroidManifest.xml");
-        return fs.existsSync(manifestPath)
-          ? [new FileItem("AndroidManifest.xml", manifestPath)]
+        return inspection.manifestPath
+          ? [new FileItem("AndroidManifest.xml", inspection.manifestPath)]
           : [];
       }
 
       case CategoryKind.Sources: {
-        const roots = [
-          { dir: path.join(srcMain, "java"), suffix: undefined },
-          { dir: path.join(srcMain, "kotlin"), suffix: undefined },
-          { dir: path.join(cat.moduleFsPath, "src", "androidTest", "java"), suffix: "androidTest" },
-          { dir: path.join(cat.moduleFsPath, "src", "androidTest", "kotlin"), suffix: "androidTest" },
-          { dir: path.join(cat.moduleFsPath, "src", "test", "java"), suffix: "test" },
-          { dir: path.join(cat.moduleFsPath, "src", "test", "kotlin"), suffix: "test" },
-        ];
-
-        const items: ProjectLayoutItem[] = [];
-        for (const { dir, suffix } of roots) {
-          if (!fs.existsSync(dir)) continue;
-          const topPackages = getTopPackageRoots(dir);
-          for (const pkg of topPackages) {
-            items.push(new SourceRootItem(pkg.name, pkg.fsPath, suffix));
-          }
-        }
-        return items;
+        return inspection.sourceRoots.map((root) =>
+          new SourceRootItem(root.packageName, root.fsPath, root.sourceSet)
+        );
       }
 
       case CategoryKind.Res: {
-        const resPath = path.join(srcMain, "res");
-        return safeReadDir(resPath)
-          .filter((e) => fs.statSync(path.join(resPath, e)).isDirectory())
-          .sort()
-          .map((e) => new ResTypeItem(e, path.join(resPath, e)));
+        return inspection.resourceDirectories
+          .map((dir) => new ResTypeItem(getPathLabel(dir), dir));
       }
 
       case CategoryKind.ResGenerated: {
-        const generatedRes = path.join(cat.moduleFsPath, "build", "generated", "res");
-        return safeReadDir(generatedRes)
-          .filter((e) => fs.statSync(path.join(generatedRes, e)).isDirectory())
-          .sort()
-          .map((e) => new ResTypeItem(e, path.join(generatedRes, e)));
+        return inspection.generatedResourceDirectories
+          .map((dir) => new ResTypeItem(getPathLabel(dir), dir));
       }
     }
   }
 
   private getPackageChildren(dir: string, rootDir: string): ProjectLayoutItem[] {
-    const entries = safeReadDir(dir);
-    return entries
-      .sort((a, b) => {
-        const aIsDir = fs.statSync(path.join(dir, a)).isDirectory();
-        const bIsDir = fs.statSync(path.join(dir, b)).isDirectory();
-        if (aIsDir && !bIsDir) return -1;
-        if (!aIsDir && bIsDir) return 1;
-        return a.localeCompare(b);
-      })
-      .map((e) => {
-        const full = path.join(dir, e);
-        if (fs.statSync(full).isDirectory()) {
-          return new PackageItem(e, full, rootDir);
-        }
-        return new FileItem(e, full);
-      });
+    return listDirectoryChildren(dir).map((entry) =>
+      entry.isDirectory
+        ? new PackageItem(entry.name, entry.fsPath, rootDir)
+        : new FileItem(entry.name, entry.fsPath)
+    );
   }
 
   private getResTypeChildren(dir: string): ProjectLayoutItem[] {
-    return safeReadDir(dir)
-      .sort()
-      .map((e) => new FileItem(e, path.join(dir, e)));
-  }
-
-  private collectGradleScripts(root: string): GradleScriptItem[] {
-    const items: GradleScriptItem[] = [];
-
-    const addScript = (filePath: string, label: string, context?: string) => {
-      if (fs.existsSync(filePath)) {
-        items.push(new GradleScriptItem(label, filePath, context));
-      }
-    };
-
-    const settingsBase = path.basename(root);
-    addScript(path.join(root, "build.gradle.kts"), "build.gradle.kts", `Project: ${settingsBase}`);
-    addScript(path.join(root, "build.gradle"), "build.gradle", `Project: ${settingsBase}`);
-
-    const modules = this.detectModules(root);
-    for (const m of modules) {
-      addScript(path.join(m.fsPath, "build.gradle.kts"), "build.gradle.kts", `Module :${m.name}`);
-      addScript(path.join(m.fsPath, "build.gradle"), "build.gradle", `Module :${m.name}`);
-      addScript(path.join(m.fsPath, "proguard-rules.pro"), "proguard-rules.pro", `ProGuard Rules for :${m.name}`);
-    }
-
-    addScript(path.join(root, "gradle.properties"), "gradle.properties", "Project Properties");
-    addScript(
-      path.join(root, "gradle", "wrapper", "gradle-wrapper.properties"),
-      "gradle-wrapper.properties",
-      "Gradle Version"
-    );
-    addScript(path.join(root, "gradle", "libs.versions.toml"), "libs.versions.toml", 'Version Catalog "libs"');
-    addScript(path.join(root, "local.properties"), "local.properties", "SDK Location");
-    addScript(path.join(root, "settings.gradle.kts"), "settings.gradle.kts", "Project Settings");
-    addScript(path.join(root, "settings.gradle"), "settings.gradle", "Project Settings");
-
-    return items;
+    return listDirectoryChildren(dir)
+      .map((entry) => new FileItem(entry.name, entry.fsPath));
   }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function safeReadDir(dir: string): string[] {
-  try {
-    return fs.readdirSync(dir);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Given a source root like `.../src/main/java`, collapse into the top-level
- * package root (e.g. `com.example.app`) by descending single-child directories.
- */
-function getTopPackageRoots(dir: string): { name: string; fsPath: string }[] {
-  const entries = safeReadDir(dir).filter((e) =>
-    fs.statSync(path.join(dir, e)).isDirectory()
-  );
-
-  if (entries.length === 0) return [];
-
-  return entries.map((e) => {
-    let current = path.join(dir, e);
-    let name = e;
-    while (true) {
-      const children = safeReadDir(current).filter((c) =>
-        fs.statSync(path.join(current, c)).isDirectory()
-      );
-      const files = safeReadDir(current).filter((c) =>
-        !fs.statSync(path.join(current, c)).isDirectory()
-      );
-      if (children.length === 1 && files.length === 0) {
-        name = `${name}.${children[0]}`;
-        current = path.join(current, children[0]);
-      } else {
-        break;
-      }
-    }
-    return { name, fsPath: current };
-  });
+function getPathLabel(fsPath: string): string {
+  const parts = fsPath.split(/[/\\]/);
+  return parts[parts.length - 1] ?? fsPath;
 }
 
 // ── Node kinds ─────────────────────────────────────────────────────────────
