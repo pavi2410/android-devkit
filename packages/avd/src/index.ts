@@ -7,6 +7,81 @@ import type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions } from "./types.js
 export type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions };
 
 const execFileAsync = promisify(execFile);
+const shouldUseShell = process.platform === "win32";
+
+function getAvdToolEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+  };
+
+  if (process.platform === "win32" && !env.SKIP_JDK_VERSION_CHECK) {
+    env.SKIP_JDK_VERSION_CHECK = "1";
+  }
+
+  return env;
+}
+
+function parseAvdBlock(lines: string[]): Avd | undefined {
+  const get = (prefix: string) =>
+    lines.find((line) => line.startsWith(prefix))?.slice(prefix.length).trim() ?? "";
+
+  const name = get("Name: ");
+  if (!name) return undefined;
+
+  const device = get("Device: ");
+  const avdPath = get("Path: ");
+  const sdcard = get("Sdcard: ") || undefined;
+  const targetLine = get("Target: ");
+
+  const basedOnRaw = get("Based on: ");
+  let target = targetLine || basedOnRaw;
+  let abi = get("Tag/ABI: ");
+
+  const tagAbiInline = basedOnRaw.match(/^(.+?)\s+Tag\/ABI:\s*(.+)$/);
+  if (tagAbiInline) {
+    if (!targetLine) target = tagAbiInline[1].trim();
+    if (!abi) abi = tagAbiInline[2].trim();
+  }
+
+  let api = 0;
+  const apiPatterns = [
+    /API level (\d+)/i,
+    /Android API (\d+)/i,
+    /Android (\d+)/i,
+    /API (\d+)/i,
+    /android-(\d+(?:\.\d+)?)/i,
+  ];
+
+  for (const source of [basedOnRaw, targetLine]) {
+    for (const pattern of apiPatterns) {
+      const match = source.match(pattern);
+      if (match) {
+        api = parseInt(match[1], 10);
+        if (api > 0) break;
+      }
+    }
+    if (api > 0) break;
+  }
+
+  return { name, target, api, abi, device, path: avdPath, sdcard };
+}
+
+function parseDeviceProfileBlock(lines: string[]): DeviceProfile | undefined {
+  const idLine = lines.find((line) => line.startsWith("id:"));
+  if (!idLine) return undefined;
+
+  const idMatch = idLine.match(/id:\s+\d+\s+or\s+"([^"]+)"/);
+  const id = idMatch?.[1] ?? "";
+  if (!id) return undefined;
+
+  const nameLine = lines.find((line) => line.startsWith("Name:"));
+  const name = nameLine?.slice("Name:".length).trim() ?? id;
+
+  const oemLine = lines.find((line) => /^OEM\s*:/.test(line));
+  const oem = oemLine?.replace(/^OEM\s*:\s*/, "").trim() ?? "";
+
+  return { id, name, oem };
+}
 
 /**
  * Resolve avdmanager path from the SDK root.
@@ -42,53 +117,33 @@ export function getEmulatorPath(sdkPath: string): string | undefined {
  */
 export function parseAvdList(output: string): Avd[] {
   const avds: Avd[] = [];
-  const blocks = output.split(/\n-{2,}\n/);
+  const lines = output.replace(/\r\n/g, "\n").split("\n");
+  let currentBlock: string[] = [];
 
-  for (const block of blocks) {
-    const lines = block.split("\n").map((l) => l.trim());
-    const nameLine = lines.find((l) => l.startsWith("Name:"));
-    if (!nameLine) continue;
+  const flushCurrentBlock = () => {
+    const avd = parseAvdBlock(currentBlock.map((line) => line.trim()).filter(Boolean));
+    if (avd) avds.push(avd);
+    currentBlock = [];
+  };
 
-    const get = (prefix: string) =>
-      lines.find((l) => l.startsWith(prefix))?.slice(prefix.length).trim() ?? "";
-
-    const name = get("Name: ");
-    const device = get("Device: ");
-    const avdPath = get("Path: ");
-    const sdcard = get("Sdcard: ") || undefined;
-
-    // "Based on:" line may contain "Tag/ABI:" inline
-    const basedOnRaw = get("Based on: ");
-    let target = basedOnRaw;
-    let abi = get("Tag/ABI: ");
-
-    // Handle "Based on: Android API 0 Tag/ABI: google_apis_playstore/arm64-v8a"
-    const tagAbiInline = basedOnRaw.match(/^(.+?)\s+Tag\/ABI:\s*(.+)$/);
-    if (tagAbiInline) {
-      target = tagAbiInline[1].trim();
-      if (!abi) abi = tagAbiInline[2].trim();
+  for (const line of lines) {
+    if (/^\s*Name:\s*/.test(line)) {
+      if (currentBlock.length > 0) flushCurrentBlock();
+      currentBlock = [line];
+      continue;
     }
 
-    // Extract API level with multiple fallback patterns
-    let api = 0;
-    const apiPatterns = [
-      /API level (\d+)/,
-      /Android (\d+)/,
-      /API (\d+)/,
-      /android-(\d+(?:\.\d+)?)/,
-    ];
-    for (const pattern of apiPatterns) {
-      const match = basedOnRaw.match(pattern);
-      if (match) {
-        api = parseInt(match[1], 10);
-        if (api > 0) break;
-      }
+    if (currentBlock.length === 0) continue;
+
+    if (/^\s*-{2,}\s*$/.test(line)) {
+      flushCurrentBlock();
+      continue;
     }
 
-    if (name) {
-      avds.push({ name, target, api, abi, device, path: avdPath, sdcard });
-    }
+    currentBlock.push(line);
   }
+
+  if (currentBlock.length > 0) flushCurrentBlock();
 
   return avds;
 }
@@ -98,26 +153,33 @@ export function parseAvdList(output: string): Avd[] {
  */
 export function parseDeviceProfiles(output: string): DeviceProfile[] {
   const profiles: DeviceProfile[] = [];
-  const blocks = output.split(/\n-{2,}\n/);
+  const lines = output.replace(/\r\n/g, "\n").split("\n");
+  let currentBlock: string[] = [];
 
-  for (const block of blocks) {
-    const lines = block.split("\n").map((l) => l.trim());
-    const idLine = lines.find((l) => l.startsWith("id:"));
-    if (!idLine) continue;
+  const flushCurrentBlock = () => {
+    const profile = parseDeviceProfileBlock(currentBlock.map((line) => line.trim()).filter(Boolean));
+    if (profile) profiles.push(profile);
+    currentBlock = [];
+  };
 
-    const idMatch = idLine.match(/id:\s+\d+\s+or\s+"([^"]+)"/);
-    const id = idMatch?.[1] ?? "";
-
-    const nameLine = lines.find((l) => l.startsWith("Name:"));
-    const name = nameLine?.slice("Name:".length).trim() ?? id;
-
-    const oemLine = lines.find((l) => /^OEM\s*:/.test(l));
-    const oem = oemLine?.replace(/^OEM\s*:\s*/, "").trim() ?? "";
-
-    if (id) {
-      profiles.push({ id, name, oem });
+  for (const line of lines) {
+    if (/^\s*id:\s*/.test(line)) {
+      if (currentBlock.length > 0) flushCurrentBlock();
+      currentBlock = [line];
+      continue;
     }
+
+    if (currentBlock.length === 0) continue;
+
+    if (/^\s*-{2,}\s*$/.test(line)) {
+      flushCurrentBlock();
+      continue;
+    }
+
+    currentBlock.push(line);
   }
+
+  if (currentBlock.length > 0) flushCurrentBlock();
 
   return profiles;
 }
@@ -185,6 +247,8 @@ export async function listAvds(sdkPath: string): Promise<Avd[]> {
 
   const { stdout } = await execFileAsync(avdManagerPath, ["list", "avd"], {
     timeout: 30000,
+    shell: shouldUseShell,
+    env: getAvdToolEnv(),
   });
 
   const avds = parseAvdList(stdout);
@@ -218,6 +282,8 @@ export async function listDeviceProfiles(sdkPath: string): Promise<DeviceProfile
 
   const { stdout } = await execFileAsync(avdManagerPath, ["list", "device"], {
     timeout: 30000,
+    shell: shouldUseShell,
+    env: getAvdToolEnv(),
   });
 
   return parseDeviceProfiles(stdout);
@@ -243,7 +309,7 @@ export async function createAvd(sdkPath: string, opts: CreateAvdOptions): Promis
   if (opts.sdcard) args.push("--sdcard", opts.sdcard);
 
   await new Promise<void>((resolve, reject) => {
-    const proc = spawn(avdManagerPath, args);
+    const proc = spawn(avdManagerPath, args, { shell: shouldUseShell, env: getAvdToolEnv() });
 
     proc.stdin.write("no\n");
 
@@ -267,6 +333,8 @@ export async function deleteAvd(sdkPath: string, name: string): Promise<void> {
 
   await execFileAsync(avdManagerPath, ["delete", "avd", "-n", name], {
     timeout: 30000,
+    shell: shouldUseShell,
+    env: getAvdToolEnv(),
   });
 }
 

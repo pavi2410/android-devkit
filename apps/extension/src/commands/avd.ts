@@ -40,7 +40,7 @@ export function registerAvdCommands(
           "Open SDK Manager"
         );
         if (action === "Open SDK Manager") {
-          vscode.commands.executeCommand("androidDevkit.sdkManager.focus");
+          vscode.commands.executeCommand("androidDevkit.openSdkManager");
         }
         return;
       }

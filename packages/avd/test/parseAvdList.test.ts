@@ -8,6 +8,11 @@ const fixture = readFileSync(
   "utf-8"
 );
 
+const windowsFixture = readFileSync(
+  join(import.meta.dirname, "fixtures/avdmanager__list_avd_windows.txt"),
+  "utf-8"
+);
+
 describe("parseAvdList", () => {
   it("parses without throwing", () => {
     expect(() => parseAvdList(fixture)).not.toThrow();
@@ -46,6 +51,27 @@ describe("parseAvdList", () => {
     const avds = parseAvdList(fixture);
     const avd = avds.find((a) => a.name === "Medium_Phone");
     expect(avd?.target).toBeTruthy();
+  });
+
+  it("parses multiple Windows AVD entries", () => {
+    const avds = parseAvdList(windowsFixture);
+    expect(avds).toHaveLength(2);
+    expect(avds.map((avd) => avd.name)).toEqual(["amper-36", "Pixel_9_API_35"]);
+  });
+
+  it("extracts Windows paths and API levels", () => {
+    const avds = parseAvdList(windowsFixture);
+    const amper = avds.find((avd) => avd.name === "amper-36");
+    const pixel = avds.find((avd) => avd.name === "Pixel_9_API_35");
+
+    expect(amper?.path).toContain("amper-36.avd");
+    expect(amper?.api).toBeGreaterThan(0);
+    expect(amper?.target).toBeTruthy();
+
+    expect(pixel?.path).toContain("Pixel_9_API_35.avd");
+    expect(pixel?.api).toBeGreaterThan(0);
+    expect(pixel?.abi).toContain("x86_64");
+    expect(pixel?.device).toContain("pixel_9");
   });
 
   it("handles empty output", () => {

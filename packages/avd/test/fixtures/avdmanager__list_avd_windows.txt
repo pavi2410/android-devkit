@@ -1,0 +1,12 @@
+Available Android Virtual Devices:
+    Name: amper-36
+    Path: C:\Users\Pavitra\.android\avd\amper-36.avd
+  Target: Google APIs (Google Inc.)
+          Based on: Android 16.0 ("Baklava") Tag/ABI: google_apis/x86_64
+---------
+    Name: Pixel_9_API_35
+  Device: pixel_9 (Google)
+    Path: C:\Users\Pavitra\.android\avd\Pixel_9_API_35.avd
+  Target: Google Play (Google Inc.)
+          Based on: Android 15.0 ("VanillaIceCream") Tag/ABI: google_apis_playstore/x86_64
+  Sdcard: 512M

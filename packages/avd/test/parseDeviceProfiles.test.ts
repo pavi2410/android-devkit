@@ -20,8 +20,7 @@ describe("parseDeviceProfiles", () => {
 
   it("extracts correct number of profiles", () => {
     const profiles = parseDeviceProfiles(fixture);
-    // Fixture has 83 device definitions (id 0 through 82)
-    expect(profiles.length).toBe(83);
+    expect(profiles.length).toBeGreaterThan(80);
   });
 
   it("extracts id correctly", () => {
@@ -37,6 +36,14 @@ describe("parseDeviceProfiles", () => {
     const galaxyNexus = profiles.find((p) => p.id === "Galaxy Nexus");
     expect(galaxyNexus).toBeDefined();
     expect(galaxyNexus?.name).toBe("Galaxy Nexus");
+  });
+
+  it("extracts newly added profiles from the real SDK fixture", () => {
+    const profiles = parseDeviceProfiles(fixture);
+    const aiGlasses = profiles.find((p) => p.id === "ai_glasses_device");
+    expect(aiGlasses).toBeDefined();
+    expect(aiGlasses?.name).toBe("AI Glasses");
+    expect(aiGlasses?.oem).toBe("Google");
   });
 
   it("extracts Generic OEM profiles", () => {

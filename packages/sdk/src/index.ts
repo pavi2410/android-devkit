@@ -7,6 +7,20 @@ import type { SdkPackage, SdkPackageCategory } from "./types.js";
 export type { SdkPackage, SdkPackageCategory };
 
 const execFileAsync = promisify(execFile);
+const shouldUseShell = process.platform === "win32";
+
+function getSdkToolEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    JAVA_OPTS: "-Dfile.encoding=UTF-8",
+  };
+
+  if (process.platform === "win32" && !env.SKIP_JDK_VERSION_CHECK) {
+    env.SKIP_JDK_VERSION_CHECK = "1";
+  }
+
+  return env;
+}
 
 /**
  * Resolve the sdkmanager executable path from the SDK root.
@@ -212,7 +226,8 @@ export async function listSdkPackages(sdkPath: string): Promise<SdkPackage[]> {
 
   const { stdout } = await execFileAsync(sdkManagerPath, ["--list", "--include_obsolete"], {
     timeout: 60000,
-    env: { ...process.env, JAVA_OPTS: "-Dfile.encoding=UTF-8" },
+    shell: shouldUseShell,
+    env: getSdkToolEnv(),
   });
 
   return parseSdkManagerList(stdout);
@@ -240,7 +255,8 @@ export function installSdkPackage(
   }
 
   const proc = spawn(sdkManagerPath, ["--install", id], {
-    env: { ...process.env, JAVA_OPTS: "-Dfile.encoding=UTF-8" },
+    shell: shouldUseShell,
+    env: getSdkToolEnv(),
   });
 
   // Automatically accept all license prompts
@@ -263,7 +279,8 @@ export async function uninstallSdkPackage(sdkPath: string, id: string): Promise<
 
   await execFileAsync(sdkManagerPath, ["--uninstall", id], {
     timeout: 60000,
-    env: { ...process.env, JAVA_OPTS: "-Dfile.encoding=UTF-8" },
+    shell: shouldUseShell,
+    env: getSdkToolEnv(),
   });
 }
 
@@ -277,7 +294,8 @@ export function updateAllSdkPackages(sdkPath: string): ReturnType<typeof spawn> 
   }
 
   const proc = spawn(sdkManagerPath, ["--update"], {
-    env: { ...process.env, JAVA_OPTS: "-Dfile.encoding=UTF-8" },
+    shell: shouldUseShell,
+    env: getSdkToolEnv(),
   });
 
   proc.stdout.on("data", () => {
