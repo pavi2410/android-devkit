@@ -50,10 +50,20 @@ export interface Device {
 export interface AdbOptions {
   /** Path to ADB binary (defaults to "adb" in PATH) */
   adbPath?: string;
+  /** Android SDK root used to auto-resolve ADB from platform-tools */
+  sdkPath?: string;
   /** Target device serial (uses -s flag) */
   serial?: string;
   /** Command timeout in milliseconds */
   timeout?: number;
+}
+
+/**
+ * Options for resolving ADB path
+ */
+export interface ResolveAdbPathOptions {
+  adbPath?: string;
+  sdkPath?: string;
 }
 
 /**

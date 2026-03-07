@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import * as fs from "node:fs";
+import { getSdkToolDirectories } from "@android-devkit/android-sdk";
 import type { SdkService } from "./sdk";
 
 /**
@@ -12,32 +12,7 @@ import type { SdkService } from "./sdk";
  * Directories are only included when they actually exist on disk.
  */
 export function getSdkToolDirs(sdkPath: string): string[] {
-  const dirs: string[] = [];
-
-  const platformTools = path.join(sdkPath, "platform-tools");
-  if (fs.existsSync(platformTools)) dirs.push(platformTools);
-
-  const emulatorDir = path.join(sdkPath, "emulator");
-  if (fs.existsSync(emulatorDir)) dirs.push(emulatorDir);
-
-  const cmdlineToolsRoot = path.join(sdkPath, "cmdline-tools");
-  if (fs.existsSync(cmdlineToolsRoot)) {
-    const latestBin = path.join(cmdlineToolsRoot, "latest", "bin");
-    if (fs.existsSync(latestBin)) {
-      dirs.push(latestBin);
-    } else {
-      const versions = fs.readdirSync(cmdlineToolsRoot).filter((e) => e !== "latest");
-      for (const ver of versions) {
-        const bin = path.join(cmdlineToolsRoot, ver, "bin");
-        if (fs.existsSync(bin)) {
-          dirs.push(bin);
-          break;
-        }
-      }
-    }
-  }
-
-  return dirs;
+  return getSdkToolDirectories(sdkPath);
 }
 
 /**

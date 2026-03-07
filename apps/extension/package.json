@@ -605,6 +605,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@android-devkit/android-sdk": "workspace:*",
     "@android-devkit/adb": "workspace:*",
     "@android-devkit/sdkmanager": "workspace:*",
     "@android-devkit/avdmanager": "workspace:*",

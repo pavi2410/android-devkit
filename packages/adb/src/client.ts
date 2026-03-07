@@ -1,5 +1,23 @@
 import { spawn } from "node:child_process";
-import type { AdbOptions, AdbResult } from "./types.js";
+import * as fs from "node:fs";
+import { resolvePlatformToolPath } from "@android-devkit/android-sdk";
+import type { AdbOptions, AdbResult, ResolveAdbPathOptions } from "./types.js";
+
+export function resolveAdbPath(options: ResolveAdbPathOptions = {}): string {
+  const configuredPath = options.adbPath?.trim();
+  if (configuredPath && fs.existsSync(configuredPath)) {
+    return configuredPath;
+  }
+
+  if (options.sdkPath) {
+    const adbInSdk = resolvePlatformToolPath(options.sdkPath, "adb");
+    if (adbInSdk) {
+      return adbInSdk;
+    }
+  }
+
+  return "adb";
+}
 
 /**
  * Low-level ADB client for executing commands
@@ -9,7 +27,7 @@ export class AdbClient {
   private defaultTimeout: number;
 
   constructor(options: AdbOptions = {}) {
-    this.adbPath = options.adbPath ?? "adb";
+    this.adbPath = resolveAdbPath({ adbPath: options.adbPath, sdkPath: options.sdkPath });
     this.defaultTimeout = options.timeout ?? 30000;
   }
 

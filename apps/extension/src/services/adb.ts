@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import * as fs from "node:fs";
 import {
   type SdkService
 } from "./sdk";
 import {
   AdbClient,
+  resolveAdbPath,
   getDevices,
   getDeviceName,
   getApiLevel,
@@ -58,23 +58,10 @@ export class AdbService {
    */
   private getAdbPath(): string {
     const config = vscode.workspace.getConfiguration("androidDevkit");
-    const configuredPath = config.get<string>("adbPath");
-
-    if (configuredPath && fs.existsSync(configuredPath)) {
-      return configuredPath;
-    }
-
-    // Try to find ADB in common locations
-    const sdkPath = this.getSdkPath();
-    if (sdkPath) {
-      const adbInSdk = path.join(sdkPath, "platform-tools", "adb");
-      if (fs.existsSync(adbInSdk)) {
-        return adbInSdk;
-      }
-    }
-
-    // Fall back to PATH
-    return "adb";
+    return resolveAdbPath({
+      adbPath: config.get<string>("adbPath"),
+      sdkPath: this.getSdkPath(),
+    });
   }
 
   private getSdkPath(): string | undefined {

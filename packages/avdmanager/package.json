@@ -19,6 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@android-devkit/android-sdk": "workspace:*",
     "@android-devkit/tool-core": "workspace:*"
   },
   "devDependencies": {

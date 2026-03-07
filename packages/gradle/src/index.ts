@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { spawnCommand } from "@android-devkit/tool-core";
+import { runStreamingCommand, spawnCommand, type StreamingCommand } from "@android-devkit/tool-core";
 
 export interface GradleTask {
   name: string;
@@ -81,6 +81,18 @@ export async function getBuildVariants(projectFolder: string): Promise<BuildVari
       name: task.name.replace(/^assemble/, ""),
       assembleTask: task.name,
     }));
+}
+
+export function runTask(projectFolder: string, taskName: string): StreamingCommand {
+  const gradlew = getGradlewPath(projectFolder);
+  if (!gradlew) throw new Error("No gradlew found in workspace root.");
+
+  return runStreamingCommand({
+    command: gradlew,
+    args: [taskName, "--console=rich"],
+    cwd: projectFolder,
+    shell: process.platform === "win32",
+  });
 }
 
 export function findApk(projectFolder: string, variant: BuildVariant): string | undefined {

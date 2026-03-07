@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
-import * as path from "node:path";
-import * as fs from "node:fs";
+import { resolveAndroidSdkPath } from "@android-devkit/android-sdk";
 import {
   getSdkManagerPath,
   listSdkPackages,
@@ -33,30 +32,10 @@ export class SdkService {
 
   readonly onSdkPackagesChanged = this._onSdkPackagesChanged.event;
   readonly onAvdsChanged = this._onAvdsChanged.event;
-
+ 
   getSdkPath(): string | undefined {
     const config = vscode.workspace.getConfiguration("androidDevkit");
-    const configuredPath = config.get<string>("sdkPath");
-    if (configuredPath && fs.existsSync(configuredPath)) return configuredPath;
-
-    for (const envPath of [process.env.ANDROID_HOME, process.env.ANDROID_SDK_ROOT]) {
-      if (envPath && fs.existsSync(envPath)) return envPath;
-    }
-
-    const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
-    const localAppData = process.env.LOCALAPPDATA ?? "";
-    const candidates = [
-      path.join(home, "Library", "Android", "sdk"),
-      path.join(home, "Android", "Sdk"),
-      path.join(localAppData, "Android", "Sdk"),
-      "/opt/homebrew/share/android-commandlinetools",
-      "/usr/local/android-sdk",
-      "/opt/android-sdk",
-    ];
-    for (const p of candidates) {
-      if (p && fs.existsSync(p)) return p;
-    }
-    return undefined;
+    return resolveAndroidSdkPath({ configuredPath: config.get<string>("sdkPath") });
   }
 
   getSdkManagerPath(): string | undefined {
@@ -83,22 +62,20 @@ export class SdkService {
   installPackage(id: string, outputChannel: vscode.OutputChannel): Promise<void> {
     const sdkPath = this.getSdkPath();
     if (!sdkPath) return Promise.reject(new Error("Android SDK not found."));
-    return new Promise((resolve, reject) => {
-      outputChannel.show(true);
-      outputChannel.appendLine(`Installing ${id}…`);
-      const proc = installSdkPackage(sdkPath, id);
-      proc.stdout?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
-      proc.stderr?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
-      proc.on("close", (code: number | null) => {
-        if (code === 0) {
-          outputChannel.appendLine(`\n✓ ${id} installed.`);
-          this._onSdkPackagesChanged.fire();
-          resolve();
-        } else {
-          reject(new Error(`sdkmanager exited with code ${code}`));
-        }
-      });
-      proc.on("error", reject);
+    outputChannel.show(true);
+    outputChannel.appendLine(`Installing ${id}…`);
+    const command = installSdkPackage(sdkPath, id);
+    command.process.stdout?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
+    command.process.stderr?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
+
+    return command.result.then(({ exitCode }) => {
+      if (exitCode === 0) {
+        outputChannel.appendLine(`\n✓ ${id} installed.`);
+        this._onSdkPackagesChanged.fire();
+        return;
+      }
+
+      throw new Error(`sdkmanager exited with code ${exitCode}`);
     });
   }
 
@@ -116,22 +93,20 @@ export class SdkService {
   updateAll(outputChannel: vscode.OutputChannel): Promise<void> {
     const sdkPath = this.getSdkPath();
     if (!sdkPath) return Promise.reject(new Error("Android SDK not found."));
-    return new Promise((resolve, reject) => {
-      outputChannel.show(true);
-      outputChannel.appendLine("Updating all installed SDK packages…");
-      const proc = updateAllSdkPackages(sdkPath);
-      proc.stdout?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
-      proc.stderr?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
-      proc.on("close", (code: number | null) => {
-        if (code === 0) {
-          outputChannel.appendLine("\n✓ All packages updated.");
-          this._onSdkPackagesChanged.fire();
-          resolve();
-        } else {
-          reject(new Error(`sdkmanager --update exited with code ${code}`));
-        }
-      });
-      proc.on("error", reject);
+    outputChannel.show(true);
+    outputChannel.appendLine("Updating all installed SDK packages…");
+    const command = updateAllSdkPackages(sdkPath);
+    command.process.stdout?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
+    command.process.stderr?.on("data", (d: Buffer) => outputChannel.append(d.toString()));
+
+    return command.result.then(({ exitCode }) => {
+      if (exitCode === 0) {
+        outputChannel.appendLine("\n✓ All packages updated.");
+        this._onSdkPackagesChanged.fire();
+        return;
+      }
+
+      throw new Error(`sdkmanager --update exited with code ${exitCode}`);
     });
   }
 

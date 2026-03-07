@@ -1,7 +1,7 @@
 {
-  "name": "@android-devkit/emulator",
+  "name": "@android-devkit/android-sdk",
   "version": "0.1.0",
-  "description": "Android Emulator wrapper library",
+  "description": "Android SDK discovery and tool path resolution utilities",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,10 +17,6 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
-  },
-  "dependencies": {
-    "@android-devkit/android-sdk": "workspace:*",
-    "@android-devkit/tool-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.0.0"

@@ -15,6 +15,7 @@
       "version": "0.3.0",
       "dependencies": {
         "@android-devkit/adb": "workspace:*",
+        "@android-devkit/android-sdk": "workspace:*",
         "@android-devkit/avdmanager": "workspace:*",
         "@android-devkit/emulator": "workspace:*",
         "@android-devkit/gradle": "workspace:*",
@@ -49,8 +50,16 @@
       "name": "@android-devkit/adb",
       "version": "0.1.0",
       "dependencies": {
+        "@android-devkit/android-sdk": "workspace:*",
         "@android-devkit/tool-core": "workspace:*",
       },
+      "devDependencies": {
+        "@types/node": "^25.0.0",
+      },
+    },
+    "packages/android-sdk": {
+      "name": "@android-devkit/android-sdk",
+      "version": "0.1.0",
       "devDependencies": {
         "@types/node": "^25.0.0",
       },
@@ -59,6 +68,7 @@
       "name": "@android-devkit/avdmanager",
       "version": "0.1.0",
       "dependencies": {
+        "@android-devkit/android-sdk": "workspace:*",
         "@android-devkit/tool-core": "workspace:*",
       },
       "devDependencies": {
@@ -69,6 +79,7 @@
       "name": "@android-devkit/emulator",
       "version": "0.1.0",
       "dependencies": {
+        "@android-devkit/android-sdk": "workspace:*",
         "@android-devkit/tool-core": "workspace:*",
       },
       "devDependencies": {
@@ -99,6 +110,7 @@
       "name": "@android-devkit/sdkmanager",
       "version": "0.1.0",
       "dependencies": {
+        "@android-devkit/android-sdk": "workspace:*",
         "@android-devkit/tool-core": "workspace:*",
       },
       "devDependencies": {
@@ -115,6 +127,8 @@
   },
   "packages": {
     "@android-devkit/adb": ["@android-devkit/adb@workspace:packages/adb"],
+
+    "@android-devkit/android-sdk": ["@android-devkit/android-sdk@workspace:packages/android-sdk"],
 
     "@android-devkit/avdmanager": ["@android-devkit/avdmanager@workspace:packages/avdmanager"],
 

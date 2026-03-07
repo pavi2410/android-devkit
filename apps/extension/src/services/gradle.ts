@@ -1,10 +1,9 @@
 import * as vscode from "vscode";
-import { spawn } from "node:child_process";
 import {
   listTasks,
   getBuildVariants,
   findApk,
-  getGradlewPath,
+  runTask as runGradleTask,
   type GradleTask,
   type BuildVariant,
 } from "@android-devkit/gradle";
@@ -14,11 +13,6 @@ export type { GradleTask, BuildVariant };
 export class GradleService {
   getProjectFolder(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  }
-
-  private resolveGradlewPath(): string | undefined {
-    const projectFolder = this.getProjectFolder();
-    return projectFolder ? getGradlewPath(projectFolder) : undefined;
   }
 
   async listTasks(): Promise<GradleTask[]> {
@@ -38,15 +32,13 @@ export class GradleService {
     _outputChannel: vscode.OutputChannel,
     token?: vscode.CancellationToken
   ): Promise<void> {
-    const gradlew = this.resolveGradlewPath();
-    if (!gradlew) return Promise.reject(new Error("No gradlew found in workspace root."));
-
-    const cwd = this.getProjectFolder();
+    const projectFolder = this.getProjectFolder();
+    if (!projectFolder) return Promise.reject(new Error("No workspace folder open."));
 
     return new Promise((resolve, reject) => {
       const writeEmitter = new vscode.EventEmitter<string>();
       const closeEmitter = new vscode.EventEmitter<number>();
-      let proc: ReturnType<typeof spawn> | undefined;
+      let proc: ReturnType<typeof runGradleTask>['process'] | undefined;
 
       token?.onCancellationRequested(() => proc?.kill());
 
@@ -54,23 +46,24 @@ export class GradleService {
         onDidWrite: writeEmitter.event,
         onDidClose: closeEmitter.event,
         open() {
-          proc = spawn(gradlew, [taskName, "--console=rich"], { cwd });
-          proc.stdout!.on("data", (d: Buffer) =>
+          const command = runGradleTask(projectFolder, taskName);
+          proc = command.process;
+          proc.stdout?.on("data", (d: Buffer) =>
             writeEmitter.fire(d.toString().replace(/\n([^\r]|$)/g, "\n\r$1"))
           );
-          proc.stderr!.on("data", (d: Buffer) =>
+          proc.stderr?.on("data", (d: Buffer) =>
             writeEmitter.fire(d.toString().replace(/\n([^\r]|$)/g, "\n\r$1"))
           );
-          proc.on("close", (code: number | null) => {
-            closeEmitter.fire(code ?? 0);
-            if (code === 0 || code === null) resolve();
-            else reject(new Error(`gradlew ${taskName} failed with code ${code}`));
-          });
           proc.on("error", (err: Error) => {
             writeEmitter.fire(`Error: ${err.message}\n\r`);
             closeEmitter.fire(1);
             reject(err);
           });
+          command.result.then(({ exitCode }) => {
+            closeEmitter.fire(exitCode);
+            if (exitCode === 0) resolve();
+            else reject(new Error(`gradlew ${taskName} failed with code ${exitCode}`));
+          }, reject);
         },
         close() {
           proc?.kill();

@@ -1,5 +1,5 @@
 // Core client
-export { AdbClient } from "./client.js";
+export { AdbClient, resolveAdbPath } from "./client.js";
 
 // Device management
 export {
@@ -33,5 +33,6 @@ export type {
   ConnectionType,
   TransportType,
   AdbOptions,
+  ResolveAdbPathOptions,
   AdbResult,
 } from "./types.js";

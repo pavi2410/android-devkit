@@ -1,12 +1,15 @@
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import {
+  resolveCommandLineToolPath,
+} from "@android-devkit/android-sdk";
+import {
+  runCommand,
+  runStreamingCommand,
+  type StreamingCommand,
+} from "@android-devkit/tool-core";
 import type { SdkPackage, SdkPackageCategory } from "./types.js";
 
 export type { SdkPackage, SdkPackageCategory };
 
-const execFileAsync = promisify(execFile);
 const shouldUseShell = process.platform === "win32";
 
 function getSdkToolEnv(): NodeJS.ProcessEnv {
@@ -27,22 +30,7 @@ function getSdkToolEnv(): NodeJS.ProcessEnv {
  * Checks cmdline-tools/latest first, then falls back to any installed version.
  */
 export function getSdkManagerPath(sdkPath: string): string | undefined {
-  const ext = process.platform === "win32" ? ".bat" : "";
-  const latestPath = path.join(sdkPath, "cmdline-tools", "latest", "bin", `sdkmanager${ext}`);
-  if (fs.existsSync(latestPath)) return latestPath;
-
-  // Fallback: find any version under cmdline-tools/*/bin/sdkmanager
-  const cmdlineToolsDir = path.join(sdkPath, "cmdline-tools");
-  if (!fs.existsSync(cmdlineToolsDir)) return undefined;
-
-  const entries = fs.readdirSync(cmdlineToolsDir);
-  for (const entry of entries) {
-    if (entry === "latest") continue;
-    const candidate = path.join(cmdlineToolsDir, entry, "bin", `sdkmanager${ext}`);
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
-  return undefined;
+  return resolveCommandLineToolPath(sdkPath, "sdkmanager");
 }
 
 /**
@@ -224,8 +212,9 @@ export async function listSdkPackages(sdkPath: string): Promise<SdkPackage[]> {
     throw new Error(`sdkmanager not found in SDK at: ${sdkPath}`);
   }
 
-  const { stdout } = await execFileAsync(sdkManagerPath, ["--list", "--include_obsolete"], {
-    timeout: 60000,
+  const { stdout } = await runCommand({
+    command: sdkManagerPath,
+    args: ["--list", "--include_obsolete"],
     shell: shouldUseShell,
     env: getSdkToolEnv(),
   });
@@ -248,24 +237,26 @@ export async function listInstalledPackages(sdkPath: string): Promise<SdkPackage
 export function installSdkPackage(
   sdkPath: string,
   id: string
-): ReturnType<typeof spawn> {
+): StreamingCommand {
   const sdkManagerPath = getSdkManagerPath(sdkPath);
   if (!sdkManagerPath) {
     throw new Error(`sdkmanager not found in SDK at: ${sdkPath}`);
   }
 
-  const proc = spawn(sdkManagerPath, ["--install", id], {
+  const command = runStreamingCommand({
+    command: sdkManagerPath,
+    args: ["--install", id],
     shell: shouldUseShell,
     env: getSdkToolEnv(),
   });
 
   // Automatically accept all license prompts
   const acceptLicenses = () => {
-    proc.stdin.write("y\n");
+    command.process.stdin?.write("y\n");
   };
-  proc.stdout.on("data", acceptLicenses);
+  command.process.stdout?.on("data", acceptLicenses);
 
-  return proc;
+  return command;
 }
 
 /**
@@ -277,8 +268,9 @@ export async function uninstallSdkPackage(sdkPath: string, id: string): Promise<
     throw new Error(`sdkmanager not found in SDK at: ${sdkPath}`);
   }
 
-  await execFileAsync(sdkManagerPath, ["--uninstall", id], {
-    timeout: 60000,
+  await runCommand({
+    command: sdkManagerPath,
+    args: ["--uninstall", id],
     shell: shouldUseShell,
     env: getSdkToolEnv(),
   });
@@ -287,21 +279,22 @@ export async function uninstallSdkPackage(sdkPath: string, id: string): Promise<
 /**
  * Update all installed SDK packages.
  */
-export function updateAllSdkPackages(sdkPath: string): ReturnType<typeof spawn> {
+export function updateAllSdkPackages(sdkPath: string): StreamingCommand {
   const sdkManagerPath = getSdkManagerPath(sdkPath);
   if (!sdkManagerPath) {
     throw new Error(`sdkmanager not found in SDK at: ${sdkPath}`);
   }
 
-  const proc = spawn(sdkManagerPath, ["--update"], {
+  const command = runStreamingCommand({
+    command: sdkManagerPath,
+    args: ["--update"],
     shell: shouldUseShell,
     env: getSdkToolEnv(),
   });
 
-  proc.stdout.on("data", () => {
-    proc.stdin.write("y\n");
+  command.process.stdout?.on("data", () => {
+    command.process.stdin?.write("y\n");
   });
 
-  return proc;
+  return command;
 }
-

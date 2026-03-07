@@ -1,11 +1,8 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { resolveEmulatorToolPath } from "@android-devkit/android-sdk";
 import { spawnCommand } from "@android-devkit/tool-core";
 
 export function getEmulatorPath(sdkPath: string): string | undefined {
-  const ext = process.platform === "win32" ? ".exe" : "";
-  const emulatorPath = path.join(sdkPath, "emulator", `emulator${ext}`);
-  return fs.existsSync(emulatorPath) ? emulatorPath : undefined;
+  return resolveEmulatorToolPath(sdkPath, "emulator");
 }
 
 export function launchAvd(sdkPath: string, name: string): void {

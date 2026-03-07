@@ -1,12 +1,11 @@
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { resolveCommandLineToolPath } from "@android-devkit/android-sdk";
+import { runCommand } from "@android-devkit/tool-core";
 import type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions } from "./types.js";
 
 export type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions };
 
-const execFileAsync = promisify(execFile);
 const shouldUseShell = process.platform === "win32";
 
 function getAvdToolEnv(): NodeJS.ProcessEnv {
@@ -87,20 +86,7 @@ function parseDeviceProfileBlock(lines: string[]): DeviceProfile | undefined {
  * Resolve avdmanager path from the SDK root.
  */
 export function getAvdManagerPath(sdkPath: string): string | undefined {
-  const ext = process.platform === "win32" ? ".bat" : "";
-  const latestPath = path.join(sdkPath, "cmdline-tools", "latest", "bin", `avdmanager${ext}`);
-  if (fs.existsSync(latestPath)) return latestPath;
-
-  const cmdlineToolsDir = path.join(sdkPath, "cmdline-tools");
-  if (!fs.existsSync(cmdlineToolsDir)) return undefined;
-
-  for (const entry of fs.readdirSync(cmdlineToolsDir)) {
-    if (entry === "latest") continue;
-    const candidate = path.join(cmdlineToolsDir, entry, "bin", `avdmanager${ext}`);
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
-  return undefined;
+  return resolveCommandLineToolPath(sdkPath, "avdmanager");
 }
 
 /**
@@ -236,10 +222,12 @@ export async function listAvds(sdkPath: string): Promise<Avd[]> {
     throw new Error(`avdmanager not found in SDK at: ${sdkPath}`);
   }
 
-  const { stdout } = await execFileAsync(avdManagerPath, ["list", "avd"], {
-    timeout: 30000,
+  const { stdout } = await runCommand({
+    command: avdManagerPath,
+    args: ["list", "avd"],
     shell: shouldUseShell,
     env: getAvdToolEnv(),
+    timeoutMs: 30000,
   });
 
   const avds = parseAvdList(stdout);
@@ -271,10 +259,12 @@ export async function listDeviceProfiles(sdkPath: string): Promise<DeviceProfile
     throw new Error(`avdmanager not found in SDK at: ${sdkPath}`);
   }
 
-  const { stdout } = await execFileAsync(avdManagerPath, ["list", "device"], {
-    timeout: 30000,
+  const { stdout } = await runCommand({
+    command: avdManagerPath,
+    args: ["list", "device"],
     shell: shouldUseShell,
     env: getAvdToolEnv(),
+    timeoutMs: 30000,
   });
 
   return parseDeviceProfiles(stdout);
@@ -299,17 +289,12 @@ export async function createAvd(sdkPath: string, opts: CreateAvdOptions): Promis
   if (opts.force) args.push("--force");
   if (opts.sdcard) args.push("--sdcard", opts.sdcard);
 
-  await new Promise<void>((resolve, reject) => {
-    const proc = spawn(avdManagerPath, args, { shell: shouldUseShell, env: getAvdToolEnv() });
-
-    proc.stdin.write("no\n");
-
-    proc.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`avdmanager exited with code ${code}`));
-    });
-
-    proc.on("error", reject);
+  await runCommand({
+    command: avdManagerPath,
+    args,
+    shell: shouldUseShell,
+    env: getAvdToolEnv(),
+    input: "no\n",
   });
 }
 
@@ -322,9 +307,11 @@ export async function deleteAvd(sdkPath: string, name: string): Promise<void> {
     throw new Error(`avdmanager not found in SDK at: ${sdkPath}`);
   }
 
-  await execFileAsync(avdManagerPath, ["delete", "avd", "-n", name], {
-    timeout: 30000,
+  await runCommand({
+    command: avdManagerPath,
+    args: ["delete", "avd", "-n", name],
     shell: shouldUseShell,
     env: getAvdToolEnv(),
+    timeoutMs: 30000,
   });
 }
