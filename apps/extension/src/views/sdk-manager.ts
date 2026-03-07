@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { SdkService, SdkPackage } from "../services/sdk";
+import { ANDROID_DEVKIT_COMMANDS } from "../commands/ids";
 
 type SdkManagerTreeItem = CategoryItem | PackageItem | NoSdkItem | ErrorItem;
 
@@ -106,7 +107,7 @@ class NoSdkItem extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon("warning");
     this.tooltip = "Configure androidDevkit.sdkPath or set ANDROID_HOME";
     this.command = {
-      command: "androidDevkit.showSdkInfo",
+      command: ANDROID_DEVKIT_COMMANDS.showSdkInfo,
       title: "Open Setup",
     };
   }

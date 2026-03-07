@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import type { SdkService } from "../services/sdk";
 import type { AvdManagerProvider } from "../views/avd-manager";
 import { AvdItem } from "../views/avd-manager";
+import { ANDROID_DEVKIT_COMMANDS } from "./ids";
 
 export function registerAvdCommands(
   context: vscode.ExtensionContext,
@@ -9,11 +10,11 @@ export function registerAvdCommands(
   avdManagerProvider: AvdManagerProvider
 ): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.refreshAvds", () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.refreshAvds, () => {
       avdManagerProvider.refresh();
     }),
 
-    vscode.commands.registerCommand("androidDevkit.createAvd", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.createAvd, async () => {
       const sdkPath = sdkService.getSdkPath();
       if (!sdkPath) {
         vscode.window.showErrorMessage("Android SDK not found. Configure androidDevkit.sdkPath.");
@@ -40,7 +41,7 @@ export function registerAvdCommands(
           "Open SDK Manager"
         );
         if (action === "Open SDK Manager") {
-          vscode.commands.executeCommand("androidDevkit.openSdkManager");
+          vscode.commands.executeCommand(ANDROID_DEVKIT_COMMANDS.openSdkManager);
         }
         return;
       }
@@ -93,7 +94,7 @@ export function registerAvdCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.launchAvd", async (item?: AvdItem) => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.launchAvd, async (item?: AvdItem) => {
       let name: string | undefined;
 
       if (item instanceof AvdItem) {
@@ -118,7 +119,7 @@ export function registerAvdCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.deleteAvd", async (item?: AvdItem) => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.deleteAvd, async (item?: AvdItem) => {
       if (!(item instanceof AvdItem)) return;
       const { name } = item.avd;
 
@@ -139,7 +140,7 @@ export function registerAvdCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.wipeAvdData", async (item?: AvdItem) => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.wipeAvdData, async (item?: AvdItem) => {
       if (!(item instanceof AvdItem)) return;
       const { name } = item.avd;
 

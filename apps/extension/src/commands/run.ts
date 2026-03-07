@@ -4,6 +4,7 @@ import * as path from "node:path";
 import type { GradleService } from "../services/gradle";
 import type { AdbService } from "../services/adb";
 import type { BuildRunProvider } from "../views/build-run";
+import { ANDROID_DEVKIT_COMMANDS } from "./ids";
 
 function detectAppPackage(): string | undefined {
   const folders = vscode.workspace.workspaceFolders;
@@ -51,7 +52,7 @@ export function registerRunCommands(
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.selectBuildVariant", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.selectBuildVariant, async () => {
       let variants = buildRunProvider.getVariants();
       if (variants.length === 0) {
         try {
@@ -79,7 +80,7 @@ export function registerRunCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.selectRunTarget", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.selectRunTarget, async () => {
       let devices: { serial: string; label: string }[] = [];
       try {
         const deviceInfos = await adbService.getDevices();
@@ -106,7 +107,7 @@ export function registerRunCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.buildVariant", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.buildVariant, async () => {
       const variant = buildRunProvider.getSelectedVariant();
       if (!variant) {
         vscode.window.showWarningMessage("No build variant selected. Click 'Build Variant' to choose one.");
@@ -131,7 +132,7 @@ export function registerRunCommands(
       );
     }),
 
-    vscode.commands.registerCommand("androidDevkit.runOnDevice", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.runOnDevice, async () => {
       const variant = buildRunProvider.getSelectedVariant();
       const serial = buildRunProvider.getSelectedDeviceSerial();
 
@@ -179,7 +180,7 @@ export function registerRunCommands(
       );
     }),
 
-    vscode.commands.registerCommand("androidDevkit.stopApp", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.stopApp, async () => {
       const serial = buildRunProvider.getSelectedDeviceSerial();
       if (!serial) {
         vscode.window.showWarningMessage("No target device selected.");
@@ -198,7 +199,7 @@ export function registerRunCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.installApk", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.installApk, async () => {
       const serial = buildRunProvider.getSelectedDeviceSerial();
       if (!serial) {
         vscode.window.showWarningMessage("No target device selected. Click 'Target Device' to choose one.");

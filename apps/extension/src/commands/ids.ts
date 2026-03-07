@@ -1,0 +1,69 @@
+export const ANDROID_DEVKIT_COMMANDS = {
+  refreshProjectLayout: "androidDevkit.refreshProjectLayout",
+  refreshDevices: "androidDevkit.refreshDevices",
+  takeScreenshot: "androidDevkit.takeScreenshot",
+  rebootDevice: "androidDevkit.rebootDevice",
+  connectDevice: "androidDevkit.connectDevice",
+  pairDevice: "androidDevkit.pairDevice",
+  enableTcpip: "androidDevkit.enableTcpip",
+  openShell: "androidDevkit.openShell",
+  browseFiles: "androidDevkit.browseFiles",
+  startLogcat: "androidDevkit.startLogcat",
+  stopLogcat: "androidDevkit.stopLogcat",
+  clearLogcat: "androidDevkit.clearLogcat",
+  setLogcatFilter: "androidDevkit.setLogcatFilter",
+  setLogcatPackageFilter: "androidDevkit.setLogcatPackageFilter",
+  refreshFileExplorer: "androidDevkit.refreshFileExplorer",
+  pullFile: "androidDevkit.pullFile",
+  pushFile: "androidDevkit.pushFile",
+  deleteRemoteFile: "androidDevkit.deleteRemoteFile",
+  showSdkInfo: "androidDevkit.showSdkInfo",
+  refreshSdkPackages: "androidDevkit.refreshSdkPackages",
+  installSdkPackage: "androidDevkit.installSdkPackage",
+  uninstallSdkPackage: "androidDevkit.uninstallSdkPackage",
+  updateAllSdkPackages: "androidDevkit.updateAllSdkPackages",
+  refreshAvds: "androidDevkit.refreshAvds",
+  createAvd: "androidDevkit.createAvd",
+  launchAvd: "androidDevkit.launchAvd",
+  deleteAvd: "androidDevkit.deleteAvd",
+  wipeAvdData: "androidDevkit.wipeAvdData",
+  refreshGradleTasks: "androidDevkit.refreshGradleTasks",
+  syncGradle: "androidDevkit.syncGradle",
+  runGradleTask: "androidDevkit.runGradleTask",
+  cleanBuild: "androidDevkit.cleanBuild",
+  assembleBuild: "androidDevkit.assembleBuild",
+  selectBuildVariant: "androidDevkit.selectBuildVariant",
+  selectRunTarget: "androidDevkit.selectRunTarget",
+  buildVariant: "androidDevkit.buildVariant",
+  runOnDevice: "androidDevkit.runOnDevice",
+  stopApp: "androidDevkit.stopApp",
+  installApk: "androidDevkit.installApk",
+  addToTerminalPath: "androidDevkit.addToTerminalPath",
+  commandMenu: "androidDevkit.commandMenu",
+  openSdkManager: "androidDevkit.openSdkManager",
+  focusDevices: "androidDevkit.devices.focus",
+  focusLogcat: "androidDevkit.logcat.focus",
+  focusFileExplorer: "androidDevkit.fileExplorer.focus",
+  focusAvdManager: "androidDevkit.avdManager.focus",
+  focusBuildRun: "androidDevkit.buildRun.focus",
+  focusGradleTasks: "androidDevkit.gradleTasks.focus",
+} as const;
+
+export type AndroidDevkitCommandId =
+  (typeof ANDROID_DEVKIT_COMMANDS)[keyof typeof ANDROID_DEVKIT_COMMANDS];
+
+export const VS_CODE_COMMANDS = {
+  open: "vscode.open",
+  revealFileInOs: "revealFileInOS",
+  openSettings: "workbench.action.openSettings",
+  openWalkthrough: "workbench.action.openWalkthrough",
+  setContext: "setContext",
+} as const;
+
+export type VsCodeCommandId = (typeof VS_CODE_COMMANDS)[keyof typeof VS_CODE_COMMANDS];
+
+export type KnownCommandId = AndroidDevkitCommandId | VsCodeCommandId;
+
+export const CONTEXT_KEYS = {
+  logcatRunning: "androidDevkit.logcatRunning",
+} as const;

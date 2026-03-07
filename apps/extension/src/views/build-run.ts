@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { GradleService, BuildVariant } from "../services/gradle";
 import type { AdbService } from "../services/adb";
+import { ANDROID_DEVKIT_COMMANDS, type AndroidDevkitCommandId } from "../commands/ids";
 
 type BuildRunTreeItem = SectionItem | ActionItem;
 
@@ -72,12 +73,12 @@ export class BuildRunProvider implements vscode.TreeDataProvider<BuildRunTreeIte
     const deviceLabel = this.selectedDeviceLabel ?? "Not selected";
 
     return [
-      new SectionItem("Build Variant", variantLabel, "$(symbol-enum)", "androidDevkit.selectBuildVariant"),
-      new SectionItem("Target Device", deviceLabel, "$(device-mobile)", "androidDevkit.selectRunTarget"),
-      new ActionItem("Build", "Assemble selected variant", "$(package)", "androidDevkit.buildVariant"),
-      new ActionItem("Run", "Build, install and launch app", "$(play)", "androidDevkit.runOnDevice"),
-      new ActionItem("Stop", "Force-stop app on target device", "$(debug-stop)", "androidDevkit.stopApp"),
-      new ActionItem("Install APK", "Install APK from file", "$(cloud-download)", "androidDevkit.installApk"),
+      new SectionItem("Build Variant", variantLabel, "$(symbol-enum)", ANDROID_DEVKIT_COMMANDS.selectBuildVariant),
+      new SectionItem("Target Device", deviceLabel, "$(device-mobile)", ANDROID_DEVKIT_COMMANDS.selectRunTarget),
+      new ActionItem("Build", "Assemble selected variant", "$(package)", ANDROID_DEVKIT_COMMANDS.buildVariant),
+      new ActionItem("Run", "Build, install and launch app", "$(play)", ANDROID_DEVKIT_COMMANDS.runOnDevice),
+      new ActionItem("Stop", "Force-stop app on target device", "$(debug-stop)", ANDROID_DEVKIT_COMMANDS.stopApp),
+      new ActionItem("Install APK", "Install APK from file", "$(cloud-download)", ANDROID_DEVKIT_COMMANDS.installApk),
     ];
   }
 
@@ -91,7 +92,7 @@ class SectionItem extends vscode.TreeItem {
     label: string,
     value: string,
     iconId: string,
-    commandId: string
+    commandId: AndroidDevkitCommandId
   ) {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.description = value;
@@ -106,7 +107,7 @@ class ActionItem extends vscode.TreeItem {
     label: string,
     tooltip: string,
     iconId: string,
-    commandId: string
+    commandId: AndroidDevkitCommandId
   ) {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.tooltip = tooltip;

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
-import type { AdbService } from "../services/adb";
 import type { LogcatEntry, LogLevel } from "@android-devkit/logcat";
+import type { LogcatService } from "../services/logcat";
+import { CONTEXT_KEYS, VS_CODE_COMMANDS } from "../commands/ids";
 
 export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<LogcatTreeItem | undefined | null | void>();
@@ -15,13 +16,22 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private packageFilter?: string;
   private pidFilter?: number;
 
-  constructor(private adbService: AdbService) {
+  constructor(private logcatService: LogcatService) {
     this.outputChannel = vscode.window.createOutputChannel("ADK: Logcat", { log: true });
     this.maxEntries = vscode.workspace.getConfiguration("androidDevkit").get("logcat.maxLines", 10000);
 
     // Listen for logcat entries
-    adbService.onLogcatEntry((entry) => {
+    logcatService.onLogcatEntry((entry) => {
       this.addEntry(entry);
+    });
+
+    logcatService.onError((error) => {
+      vscode.window.showErrorMessage(`Logcat error: ${error.message}`);
+    });
+
+    logcatService.onStateChanged((running) => {
+      void vscode.commands.executeCommand(VS_CODE_COMMANDS.setContext, CONTEXT_KEYS.logcatRunning, running);
+      this.refresh();
     });
   }
 
@@ -39,7 +49,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     const items: LogcatTreeItem[] = [];
 
     // Status item
-    if (this.adbService.isLogcatRunning) {
+    if (this.logcatService.isRunning) {
       items.push(new StatusItem("Running", this.currentDevice ?? "All devices", "play"));
     } else {
       items.push(new StatusItem("Stopped", "Click play to start", "debug-stop"));
@@ -144,8 +154,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   start(device?: string, tags?: string[]): void {
     this.currentDevice = device;
     this.outputChannel.show(true);
-    this.adbService.startLogcat(device, tags);
-    vscode.commands.executeCommand("setContext", "androidDevkit.logcatRunning", true);
+    this.logcatService.start(device, tags);
     this.refresh();
   }
 
@@ -153,8 +162,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    * Stop logcat streaming
    */
   stop(): void {
-    this.adbService.stopLogcat();
-    vscode.commands.executeCommand("setContext", "androidDevkit.logcatRunning", false);
+    this.logcatService.stop();
     this.refresh();
   }
 
@@ -164,7 +172,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   async clear(device?: string): Promise<void> {
     this.entries = [];
     this.outputChannel.clear();
-    await this.adbService.clearLogcat(device ?? this.currentDevice);
+    await this.logcatService.clear(device ?? this.currentDevice);
     this.refresh();
   }
 

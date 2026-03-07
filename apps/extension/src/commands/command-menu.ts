@@ -1,59 +1,60 @@
 import * as vscode from "vscode";
+import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS, type KnownCommandId } from "./ids";
 
 interface CommandMenuItem extends vscode.QuickPickItem {
-  command?: string;
+  command?: KnownCommandId;
 }
 
 export function registerCommandMenu(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.commandMenu", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.commandMenu, async () => {
       const items: CommandMenuItem[] = [
         {
           label: "$(device-mobile) Device Manager",
           description: "View and manage connected devices",
-          command: "androidDevkit.devices.focus",
+          command: ANDROID_DEVKIT_COMMANDS.focusDevices,
         },
         {
           label: "$(output) Logcat",
           description: "Stream device logs",
-          command: "androidDevkit.logcat.focus",
+          command: ANDROID_DEVKIT_COMMANDS.focusLogcat,
         },
         {
           label: "$(package) SDK Manager",
           description: "Install and manage SDK packages",
-          command: "androidDevkit.openSdkManager",
+          command: ANDROID_DEVKIT_COMMANDS.openSdkManager,
         },
         {
           label: "$(vm) AVD Manager",
           description: "Manage virtual devices",
-          command: "androidDevkit.avdManager.focus",
+          command: ANDROID_DEVKIT_COMMANDS.focusAvdManager,
         },
         {
           label: "$(folder) Device File Explorer",
           description: "Browse files on device",
-          command: "androidDevkit.fileExplorer.focus",
+          command: ANDROID_DEVKIT_COMMANDS.focusFileExplorer,
         },
         { label: "", kind: vscode.QuickPickItemKind.Separator },
         {
           label: "$(play) Build & Run",
           description: "Build and deploy your app",
-          command: "androidDevkit.buildRun.focus",
+          command: ANDROID_DEVKIT_COMMANDS.focusBuildRun,
         },
         {
           label: "$(list-tree) Gradle Tasks",
           description: "Run Gradle tasks",
-          command: "androidDevkit.gradleTasks.focus",
+          command: ANDROID_DEVKIT_COMMANDS.focusGradleTasks,
         },
         { label: "", kind: vscode.QuickPickItemKind.Separator },
         {
           label: "$(gear) Extension Settings",
           description: "Configure Android DevKit",
-          command: "workbench.action.openSettings",
+          command: VS_CODE_COMMANDS.openSettings,
         },
         {
           label: "$(info) Show SDK Info",
           description: "View Android SDK path and details",
-          command: "androidDevkit.showSdkInfo",
+          command: ANDROID_DEVKIT_COMMANDS.showSdkInfo,
         },
       ];
 
@@ -64,7 +65,7 @@ export function registerCommandMenu(context: vscode.ExtensionContext): void {
       });
 
       if (selected?.command) {
-        if (selected.command === "workbench.action.openSettings") {
+        if (selected.command === VS_CODE_COMMANDS.openSettings) {
           vscode.commands.executeCommand(selected.command, "androidDevkit");
         } else {
           vscode.commands.executeCommand(selected.command);

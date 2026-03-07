@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { SdkService, Avd } from "../services/sdk";
 import type { AdbService } from "../services/adb";
+import { ANDROID_DEVKIT_COMMANDS } from "../commands/ids";
 
 type AvdManagerTreeItem = AvdItem | NoSdkItem | NoAvdsItem | ErrorItem;
 
@@ -124,7 +125,7 @@ class NoSdkItem extends vscode.TreeItem {
     super("Android SDK not configured", vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon("warning");
     this.tooltip = "Configure androidDevkit.sdkPath or set ANDROID_HOME";
-    this.command = { command: "androidDevkit.showSdkInfo", title: "Open Setup" };
+    this.command = { command: ANDROID_DEVKIT_COMMANDS.showSdkInfo, title: "Open Setup" };
   }
 }
 
@@ -133,7 +134,7 @@ class NoAvdsItem extends vscode.TreeItem {
     super("No virtual devices", vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon("info");
     this.tooltip = "Create a new AVD to get started";
-    this.command = { command: "androidDevkit.createAvd", title: "Create AVD" };
+    this.command = { command: ANDROID_DEVKIT_COMMANDS.createAvd, title: "Create AVD" };
   }
 }
 

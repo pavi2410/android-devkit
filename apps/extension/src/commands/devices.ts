@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
 import type { DevicesTreeProvider, DeviceTreeItem } from "../views/devices";
 import type { FileExplorerProvider } from "../views/file-explorer";
+import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS } from "./ids";
 
 export function registerDeviceCommands(
   context: vscode.ExtensionContext,
@@ -11,14 +12,14 @@ export function registerDeviceCommands(
 ): void {
   // Refresh devices
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.refreshDevices", () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.refreshDevices, () => {
       devicesProvider.refresh();
     })
   );
 
   // Connect device wirelessly (TCP/IP)
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.connectDevice", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.connectDevice, async () => {
       const input = await vscode.window.showInputBox({
         prompt: "Enter device IP address and port",
         placeHolder: "192.168.1.100:5555",
@@ -52,7 +53,7 @@ export function registerDeviceCommands(
 
   // Pair device for wireless debugging (Android 11+)
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.pairDevice", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.pairDevice, async () => {
       const hostInput = await vscode.window.showInputBox({
         prompt: "Enter device IP address and pairing port",
         placeHolder: "192.168.1.100:37000",
@@ -97,7 +98,7 @@ export function registerDeviceCommands(
   // Enable TCP/IP mode on USB device
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "androidDevkit.enableTcpip",
+      ANDROID_DEVKIT_COMMANDS.enableTcpip,
       async (item?: DeviceTreeItem) => {
         const serial = item?.device?.serial ?? (await selectDevice(adbService));
         if (!serial) return;
@@ -118,7 +119,7 @@ export function registerDeviceCommands(
   // Open ADB shell in terminal
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "androidDevkit.openShell",
+      ANDROID_DEVKIT_COMMANDS.openShell,
       async (item?: DeviceTreeItem) => {
         const serial = item?.device?.serial ?? (await selectDevice(adbService));
         if (!serial) return;
@@ -140,13 +141,13 @@ export function registerDeviceCommands(
   // Browse device files
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "androidDevkit.browseFiles",
+      ANDROID_DEVKIT_COMMANDS.browseFiles,
       async (item?: DeviceTreeItem) => {
         const serial = item?.device?.serial ?? (await selectDevice(adbService));
         if (!serial) return;
 
         fileExplorerProvider.setDevice(serial);
-        vscode.commands.executeCommand("androidDevkit.fileExplorer.focus");
+        vscode.commands.executeCommand(ANDROID_DEVKIT_COMMANDS.focusFileExplorer);
       }
     )
   );
@@ -154,7 +155,7 @@ export function registerDeviceCommands(
   // Take screenshot
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "androidDevkit.takeScreenshot",
+      ANDROID_DEVKIT_COMMANDS.takeScreenshot,
       async (item?: DeviceTreeItem) => {
         const serial = item?.device?.serial ?? (await selectDevice(adbService));
         if (!serial) return;
@@ -177,9 +178,9 @@ export function registerDeviceCommands(
               );
 
               if (action === "Open") {
-                await vscode.commands.executeCommand("vscode.open", uri);
+                await vscode.commands.executeCommand(VS_CODE_COMMANDS.open, uri);
               } else if (action === "Show in Explorer") {
-                await vscode.commands.executeCommand("revealFileInOS", uri);
+                await vscode.commands.executeCommand(VS_CODE_COMMANDS.revealFileInOs, uri);
               }
             }
           );
@@ -194,7 +195,7 @@ export function registerDeviceCommands(
   // Reboot device
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "androidDevkit.rebootDevice",
+      ANDROID_DEVKIT_COMMANDS.rebootDevice,
       async (item?: DeviceTreeItem) => {
         const serial = item?.device?.serial ?? (await selectDevice(adbService));
         if (!serial) return;

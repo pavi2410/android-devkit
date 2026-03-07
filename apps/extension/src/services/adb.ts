@@ -27,11 +27,6 @@ import {
   deleteFile,
   type Device,
 } from "@android-devkit/adb";
-import {
-  LogcatStream,
-  clearLogcat,
-  type LogcatEntry,
-} from "@android-devkit/logcat";
 
 export interface DeviceInfo extends Device {
   name: string;
@@ -41,12 +36,9 @@ export interface DeviceInfo extends Device {
 
 export class AdbService {
   private client: AdbClient;
-  private logcatStream: LogcatStream | null = null;
   private _onDevicesChanged = new vscode.EventEmitter<void>();
-  private _onLogcatEntry = new vscode.EventEmitter<LogcatEntry>();
 
   readonly onDevicesChanged = this._onDevicesChanged.event;
-  readonly onLogcatEntry = this._onLogcatEntry.event;
 
   constructor(private sdkService: SdkService) {
     const adbPath = this.getAdbPath();
@@ -160,53 +152,6 @@ export class AdbService {
   }
 
   /**
-   * Start logcat streaming
-   */
-  startLogcat(serial?: string, tags?: string[]): void {
-    if (this.logcatStream?.isRunning) {
-      this.logcatStream.stop();
-    }
-
-    this.logcatStream = new LogcatStream({
-      adbPath: this.getAdbPath(),
-      serial,
-      tags,
-    });
-
-    this.logcatStream.on("entry", (entry: LogcatEntry) => {
-      this._onLogcatEntry.fire(entry);
-    });
-
-    this.logcatStream.on("error", (error: Error) => {
-      vscode.window.showErrorMessage(`Logcat error: ${error.message}`);
-    });
-
-    this.logcatStream.start();
-  }
-
-  /**
-   * Stop logcat streaming
-   */
-  stopLogcat(): void {
-    this.logcatStream?.stop();
-    this.logcatStream = null;
-  }
-
-  /**
-   * Check if logcat is running
-   */
-  get isLogcatRunning(): boolean {
-    return this.logcatStream?.isRunning ?? false;
-  }
-
-  /**
-   * Clear device logcat buffer
-   */
-  async clearLogcat(serial?: string): Promise<void> {
-    await clearLogcat(this.getAdbPath(), serial);
-  }
-
-  /**
    * Pair with a device for wireless debugging (Android 11+)
    */
   async pairDevice(host: string, port: number, pairingCode: string): Promise<string> {
@@ -314,8 +259,6 @@ export class AdbService {
    * Cleanup resources
    */
   dispose(): void {
-    this.stopLogcat();
     this._onDevicesChanged.dispose();
-    this._onLogcatEntry.dispose();
   }
 }

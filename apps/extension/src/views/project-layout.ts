@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { VS_CODE_COMMANDS } from "../commands/ids";
 
 type ProjectLayoutItem =
   | ModuleItem
@@ -404,7 +405,7 @@ class FileItem extends vscode.TreeItem {
     this.iconPath = vscode.ThemeIcon.File;
     this.contextValue = "androidFile";
     this.command = {
-      command: "vscode.open",
+      command: VS_CODE_COMMANDS.open,
       title: "Open File",
       arguments: [vscode.Uri.file(fsPath)],
     };
@@ -431,7 +432,7 @@ class GradleScriptItem extends vscode.TreeItem {
     this.iconPath = vscode.ThemeIcon.File;
     this.contextValue = "androidGradleScript";
     this.command = {
-      command: "vscode.open",
+      command: VS_CODE_COMMANDS.open,
       title: "Open File",
       arguments: [vscode.Uri.file(fsPath)],
     };

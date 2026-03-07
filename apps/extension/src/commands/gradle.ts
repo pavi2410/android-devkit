@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { GradleService } from "../services/gradle";
 import type { GradleTasksProvider, TaskItem } from "../views/gradle-tasks";
+import { ANDROID_DEVKIT_COMMANDS } from "./ids";
 
 export function registerGradleCommands(
   context: vscode.ExtensionContext,
@@ -11,11 +12,11 @@ export function registerGradleCommands(
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.refreshGradleTasks", () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.refreshGradleTasks, () => {
       gradleTasksProvider.refresh();
     }),
 
-    vscode.commands.registerCommand("androidDevkit.syncGradle", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.syncGradle, async () => {
       outputChannel.clear();
       outputChannel.show(true);
       outputChannel.appendLine("Syncing Gradle project…");
@@ -34,7 +35,7 @@ export function registerGradleCommands(
       );
     }),
 
-    vscode.commands.registerCommand("androidDevkit.runGradleTask", async (item?: TaskItem) => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.runGradleTask, async (item?: TaskItem) => {
       let taskName: string | undefined;
 
       if (item?.task) {
@@ -67,7 +68,7 @@ export function registerGradleCommands(
       );
     }),
 
-    vscode.commands.registerCommand("androidDevkit.cleanBuild", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.cleanBuild, async () => {
       outputChannel.clear();
       outputChannel.show(true);
       outputChannel.appendLine("Running clean…");
@@ -85,7 +86,7 @@ export function registerGradleCommands(
       );
     }),
 
-    vscode.commands.registerCommand("androidDevkit.assembleBuild", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.assembleBuild, async () => {
       outputChannel.clear();
       outputChannel.show(true);
       outputChannel.appendLine("Running assemble…");

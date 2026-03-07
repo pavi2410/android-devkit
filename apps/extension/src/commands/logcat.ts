@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
 import type { LogcatTreeProvider } from "../views/logcat";
 import type { LogLevel } from "@android-devkit/logcat";
+import { ANDROID_DEVKIT_COMMANDS } from "./ids";
 
 export function registerLogcatCommands(
   context: vscode.ExtensionContext,
@@ -10,7 +11,7 @@ export function registerLogcatCommands(
 ): void {
   // Start logcat
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.startLogcat", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.startLogcat, async () => {
       const devices = await adbService.getDevices();
 
       let serial: string | undefined;
@@ -41,7 +42,7 @@ export function registerLogcatCommands(
 
   // Stop logcat
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.stopLogcat", () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.stopLogcat, () => {
       logcatProvider.stop();
       vscode.window.showInformationMessage("Logcat stopped");
     })
@@ -49,7 +50,7 @@ export function registerLogcatCommands(
 
   // Clear logcat
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.clearLogcat", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.clearLogcat, async () => {
       await logcatProvider.clear();
       vscode.window.showInformationMessage("Logcat cleared");
     })
@@ -57,7 +58,7 @@ export function registerLogcatCommands(
 
   // Set log level filter
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.setLogcatFilter", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.setLogcatFilter, async () => {
       const levels: LogLevel[] = ["V", "D", "I", "W", "E", "F"];
       const levelNames: Record<LogLevel, string> = {
         V: "Verbose",
@@ -104,7 +105,7 @@ export function registerLogcatCommands(
 
   // Filter by package name
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.setLogcatPackageFilter", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.setLogcatPackageFilter, async () => {
       const devices = await adbService.getDevices();
       const readyDevices = devices.filter((d) => d.state === "device");
 

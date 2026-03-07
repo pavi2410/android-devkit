@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { GradleService, GradleTask } from "../services/gradle";
+import { ANDROID_DEVKIT_COMMANDS } from "../commands/ids";
 
 type GradleTreeItem = GroupItem | TaskItem | LoadingItem | ErrorItem | NoWorkspaceItem;
 
@@ -76,7 +77,7 @@ export class TaskItem extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon("play-circle");
     this.contextValue = "gradleTask";
     this.command = {
-      command: "androidDevkit.runGradleTask",
+      command: ANDROID_DEVKIT_COMMANDS.runGradleTask,
       title: "Run Task",
       arguments: [this],
     };

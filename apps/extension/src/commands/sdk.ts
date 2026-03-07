@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { SdkService } from "../services/sdk";
+import { ANDROID_DEVKIT_COMMANDS } from "./ids";
 
 export function registerSdkCommands(
   context: vscode.ExtensionContext,
@@ -9,7 +10,7 @@ export function registerSdkCommands(
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("androidDevkit.installSdkPackage", async (idArg?: string) => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.installSdkPackage, async (idArg?: string) => {
       const id = idArg ?? await vscode.window.showInputBox({
         title: "Install SDK Package",
         prompt: "Enter the package ID (e.g. platforms;android-35)",
@@ -30,7 +31,7 @@ export function registerSdkCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.uninstallSdkPackage", async (idArg?: string) => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.uninstallSdkPackage, async (idArg?: string) => {
       const id = idArg ?? await vscode.window.showInputBox({
         title: "Uninstall SDK Package",
         prompt: "Enter the package ID to uninstall",
@@ -53,7 +54,7 @@ export function registerSdkCommands(
       }
     }),
 
-    vscode.commands.registerCommand("androidDevkit.updateAllSdkPackages", async () => {
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.updateAllSdkPackages, async () => {
       try {
         await vscode.window.withProgress(
           { location: vscode.ProgressLocation.Notification, title: "Updating SDK packages…", cancellable: false },
