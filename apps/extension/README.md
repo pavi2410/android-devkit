@@ -76,10 +76,9 @@ A comprehensive VS Code extension that brings core Android development tools dir
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `androidDevkit.adbPath` | Path to the `adb` executable | Auto-detect |
-| `androidDevkit.sdkPath` | Path to the Android SDK root | Auto-detect |
-| `androidDevkit.logcat.defaultFilter` | Default logcat tag/level filter (e.g. `MyApp:D *:S`) | (empty) |
-| `androidDevkit.logcat.maxLines` | Maximum logcat entries kept in memory | `10000` |
+| `androidDevkit.sdkPath` | Override the auto-detected Android SDK root | Auto-detect |
+| `androidDevkit.logcat.defaultLogLevel` | Default minimum Logcat level for new sessions | `I` |
+| `androidDevkit.logcat.maxLines` | Maximum logcat entries kept in memory before older entries are discarded | `10000` |
 
 ## Commands
 

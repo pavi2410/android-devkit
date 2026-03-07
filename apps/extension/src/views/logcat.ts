@@ -13,6 +13,10 @@ interface LogcatSessionOptions {
   serial?: string;
 }
 
+function getDefaultLogLevel(): LogLevel {
+  return vscode.workspace.getConfiguration("androidDevkit").get<LogLevel>("logcat.defaultLogLevel", "I");
+}
+
 export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<LogcatTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -24,12 +28,13 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private maxEntries: number;
   private filter?: string;
   private hasAvailableDevices = false;
-  private session: LogcatSessionOptions = { minLevel: "I" };
+  private session: LogcatSessionOptions;
   private sessionState: LogcatSessionState = "stopped";
 
   constructor(private logcatService: LogcatService) {
     this.outputChannel = vscode.window.createOutputChannel("ADK: Logcat", { log: true });
     this.maxEntries = vscode.workspace.getConfiguration("androidDevkit").get("logcat.maxLines", 10000);
+    this.session = { minLevel: getDefaultLogLevel() };
 
     // Listen for logcat entries
     logcatService.onLogcatEntry((entry) => {

@@ -3,7 +3,7 @@ import type { AdbService } from "../services/adb";
 import type { LogcatTreeProvider } from "../views/logcat";
 import type { LogLevel } from "@android-devkit/logcat";
 import { ANDROID_DEVKIT_COMMANDS } from "./ids";
-import { resolveConfiguredOrDetectedAppPackage } from "../utils/android-app";
+import { resolveDetectedAndroidAppPackage } from "../utils/android-app";
 
 type LogcatDeviceSelection = {
   label: string;
@@ -73,7 +73,7 @@ async function resolveDefaultPackagePid(
     return {};
   }
 
-  const resolvedPackageName = packageName ?? resolveConfiguredOrDetectedAppPackage();
+  const resolvedPackageName = packageName ?? resolveDetectedAndroidAppPackage();
   if (!resolvedPackageName) {
     return {};
   }
@@ -254,7 +254,7 @@ export function registerLogcatCommands(
       }
       const serial = device.serial;
 
-      const currentAppPackage = resolveConfiguredOrDetectedAppPackage();
+      const currentAppPackage = resolveDetectedAndroidAppPackage();
 
       // Let user type package name or pick from installed packages
       const inputMethod = await vscode.window.showQuickPick(

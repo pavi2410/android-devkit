@@ -87,10 +87,9 @@ Then install the generated `.vsix` from `apps/extension/build/`.
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `androidDevkit.adbPath` | Path to `adb` executable | Auto-detect |
-| `androidDevkit.sdkPath` | Path to Android SDK root | Auto-detect |
-| `androidDevkit.logcat.defaultFilter` | Default logcat filter | (empty) |
-| `androidDevkit.logcat.maxLines` | Max logcat entries in memory | `10000` |
+| `androidDevkit.sdkPath` | Override the auto-detected Android SDK root | Auto-detect |
+| `androidDevkit.logcat.defaultLogLevel` | Default minimum Logcat level for new sessions | `I` |
+| `androidDevkit.logcat.maxLines` | Max logcat entries kept in memory before older entries are discarded | `10000` |
 
 ## Project Structure
 

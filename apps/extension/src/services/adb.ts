@@ -46,12 +46,10 @@ export class AdbService {
   }
 
   /**
-   * Get ADB path from settings or auto-detect
+   * Get ADB path from SDK path or PATH fallback
    */
   private getAdbPath(): string {
-    const config = vscode.workspace.getConfiguration("androidDevkit");
     return resolveAdbPath({
-      adbPath: config.get<string>("adbPath"),
       sdkPath: this.getSdkPath(),
     });
   }

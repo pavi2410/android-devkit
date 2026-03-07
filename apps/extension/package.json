@@ -589,30 +589,29 @@
     "configuration": {
       "title": "Android DevKit",
       "properties": {
-        "androidDevkit.adbPath": {
-          "type": "string",
-          "default": "",
-          "description": "Path to ADB executable. Leave empty to use ADB from PATH or ANDROID_HOME."
-        },
         "androidDevkit.sdkPath": {
           "type": "string",
           "default": "",
-          "description": "Path to Android SDK. Leave empty to auto-detect from ANDROID_HOME, ANDROID_SDK_ROOT (deprecated), or platform-specific default paths."
+          "description": "Override the auto-detected Android SDK path. Leave empty to detect from environment variables or standard install locations."
         },
-        "androidDevkit.logcat.defaultFilter": {
+        "androidDevkit.logcat.defaultLogLevel": {
           "type": "string",
-          "default": "",
-          "description": "Default logcat filter (e.g., 'MyApp:D *:S')"
+          "default": "I",
+          "enum": ["V", "D", "I", "W", "E", "F"],
+          "enumDescriptions": [
+            "Verbose",
+            "Debug",
+            "Info",
+            "Warning",
+            "Error",
+            "Fatal"
+          ],
+          "description": "Default minimum Logcat level for new sessions."
         },
         "androidDevkit.logcat.maxLines": {
           "type": "number",
           "default": 1e4,
-          "description": "Maximum number of logcat lines to keep in memory"
-        },
-        "androidDevkit.appPackage": {
-          "type": "string",
-          "default": "",
-          "description": "Android app package name (e.g. com.example.myapp). Leave empty to auto-detect from AndroidManifest.xml."
+          "description": "Maximum number of Logcat lines to keep in memory before older entries are discarded."
         }
       }
     },
