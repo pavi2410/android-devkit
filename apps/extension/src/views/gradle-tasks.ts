@@ -63,6 +63,7 @@ class GroupItem extends vscode.TreeItem {
   ) {
     const label = group.charAt(0).toUpperCase() + group.slice(1);
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
+    this.id = `gradle-group:${group}`;
     this.description = `${count} task${count !== 1 ? "s" : ""}`;
     this.iconPath = new vscode.ThemeIcon("folder");
     this.contextValue = "gradleGroup";
@@ -72,6 +73,7 @@ class GroupItem extends vscode.TreeItem {
 export class TaskItem extends vscode.TreeItem {
   constructor(public readonly task: GradleTask) {
     super(task.name, vscode.TreeItemCollapsibleState.None);
+    this.id = `gradle-task:${task.group}:${task.project}:${task.name}`;
     this.description = task.project !== ":" ? task.project : undefined;
     this.tooltip = task.description || task.name;
     this.iconPath = new vscode.ThemeIcon("play-circle");

@@ -1,9 +1,21 @@
 import * as vscode from "vscode";
-import type { SdkService, Avd } from "../services/sdk";
+import type { SdkService, Avd, AvdServices } from "../services/sdk";
 import type { AdbService } from "../services/adb";
 import { ANDROID_DEVKIT_COMMANDS } from "../commands/ids";
 
-type AvdManagerTreeItem = AvdItem | NoSdkItem | NoAvdsItem | ErrorItem;
+type AvdManagerTreeItem = AvdItem | PropertyItem | NoSdkItem | NoAvdsItem | ErrorItem;
+
+function getAvdServicesLabel(services: AvdServices | undefined): string {
+  switch (services) {
+    case "google-play-store":
+      return "Google Play Store";
+    case "google-apis":
+      return "Google APIs";
+    case "aosp":
+    default:
+      return "AOSP";
+  }
+}
 
 export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<AvdManagerTreeItem | undefined | null | void>();
@@ -47,6 +59,10 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
   }
 
   async getChildren(element?: AvdManagerTreeItem): Promise<AvdManagerTreeItem[]> {
+    if (element instanceof AvdItem) {
+      return this.getAvdProperties(element.avd, element.running);
+    }
+
     if (element) return [];
 
     if (!this.sdkService.getSdkPath()) {
@@ -70,6 +86,74 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
     }
   }
 
+  private getAvdProperties(avd: Avd, running: boolean): PropertyItem[] {
+    const props: PropertyItem[] = [new PropertyItem("Status", running ? "Running" : "Stopped")];
+    const config = avd.config;
+    const services = getAvdServicesLabel(config?.services);
+
+    if (avd.api > 0) {
+      props.push(new PropertyItem("API Level", avd.api.toString()));
+    }
+
+    props.push(new PropertyItem("Services", services));
+
+    if (avd.target) {
+      props.push(new PropertyItem("Target", avd.target));
+    }
+
+    if (avd.abi) {
+      props.push(new PropertyItem("ABI", avd.abi));
+    }
+
+    if (avd.device) {
+      props.push(new PropertyItem("Device", avd.device));
+    }
+
+    if (config?.lcdWidth && config.lcdHeight) {
+      props.push(
+        new PropertyItem(
+          "Resolution",
+          `${config.lcdWidth}×${config.lcdHeight} (${config.lcdDensity ?? "?"}dpi)`
+        )
+      );
+    }
+
+    if (config?.ram) {
+      props.push(new PropertyItem("RAM", `${config.ram}MB`));
+    }
+
+    if (config?.cpuArch) {
+      props.push(
+        new PropertyItem(
+          "CPU",
+          `${config.cpuArch}${config.cpuCores ? ` (${config.cpuCores} cores)` : ""}`
+        )
+      );
+    }
+
+    if (config?.gpuMode) {
+      props.push(
+        new PropertyItem(
+          "GPU",
+          `${config.gpuMode}${config.gpuEnabled ? "" : " (disabled)"}`
+        )
+      );
+    }
+
+    const sdcard = config?.sdcard ?? avd.sdcard;
+    if (sdcard) {
+      props.push(new PropertyItem("SD Card", sdcard));
+    }
+
+    if (config?.skin) {
+      props.push(new PropertyItem("Skin", config.skin));
+    }
+
+    props.push(new PropertyItem("Path", avd.path));
+
+    return props;
+  }
+
   getAvd(name: string): Avd | undefined {
     return this.avds.find((a) => a.name === name);
   }
@@ -85,38 +169,29 @@ export class AvdItem extends vscode.TreeItem {
     public readonly running: boolean
   ) {
     const displayName = avd.config?.displayName ?? avd.name.replace(/_/g, " ");
-    super(displayName, vscode.TreeItemCollapsibleState.None);
+    super(displayName, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.id = avd.name;
+    const services = getAvdServicesLabel(avd.config?.services);
 
     const parts: string[] = [];
     if (avd.api > 0) parts.push(`API ${avd.api}`);
-    if (avd.abi) parts.push(avd.abi);
+    parts.push(services);
     this.description = parts.join(" · ");
 
     this.contextValue = running ? "avd.running" : "avd.stopped";
     this.iconPath = new vscode.ThemeIcon(running ? "vm-running" : "vm");
+    this.tooltip = [displayName, running ? "Running" : "Stopped", parts.join(" · ")]
+      .filter(Boolean)
+      .join(" — ");
+  }
+}
 
-    const config = avd.config;
-    const lines: string[] = [`**${displayName}**`, ""];
-    lines.push(`- Status: ${running ? "🟢 Running" : "⬜ Stopped"}`);
-    if (avd.api > 0) lines.push(`- API Level: ${avd.api}`);
-    if (avd.target) lines.push(`- Target: ${avd.target}`);
-    if (avd.abi) lines.push(`- ABI: ${avd.abi}`);
-    if (avd.device) lines.push(`- Device: ${avd.device}`);
-    if (config) {
-      if (config.lcdWidth && config.lcdHeight) {
-        lines.push(`- Resolution: ${config.lcdWidth}×${config.lcdHeight} (${config.lcdDensity ?? "?"}dpi)`);
-      }
-      if (config.ram) lines.push(`- RAM: ${config.ram}MB`);
-      if (config.cpuArch) lines.push(`- CPU: ${config.cpuArch}${config.cpuCores ? ` (${config.cpuCores} cores)` : ""}`);
-      if (config.gpuMode) lines.push(`- GPU: ${config.gpuMode}${config.gpuEnabled ? "" : " (disabled)"}`);
-      if (config.playStoreEnabled) lines.push(`- Play Store: Yes`);
-      if (config.sdcard) lines.push(`- SD Card: ${config.sdcard}`);
-    }
-    lines.push(`- Path: \`${avd.path}\``);
-
-    this.tooltip = new vscode.MarkdownString(lines.join("\n"));
+class PropertyItem extends vscode.TreeItem {
+  constructor(label: string, value: string) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.description = value;
+    this.iconPath = new vscode.ThemeIcon("symbol-property");
   }
 }
 

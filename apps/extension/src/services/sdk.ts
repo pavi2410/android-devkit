@@ -15,6 +15,7 @@ import {
   createAvd,
   deleteAvd,
   type Avd,
+  type AvdServices,
   type DeviceProfile,
   type CreateAvdOptions,
 } from "@android-devkit/avdmanager";
@@ -24,7 +25,7 @@ import {
   wipeAvdData,
 } from "@android-devkit/emulator";
 
-export type { SdkPackage, Avd, DeviceProfile, CreateAvdOptions };
+export type { SdkPackage, Avd, AvdServices, DeviceProfile, CreateAvdOptions };
 
 export class SdkService {
   private _onSdkPackagesChanged = new vscode.EventEmitter<void>();

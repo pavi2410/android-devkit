@@ -1,3 +1,5 @@
+export type AvdServices = "aosp" | "google-apis" | "google-play-store";
+
 export interface Avd {
   name: string;
   target: string;
@@ -21,7 +23,8 @@ export interface AvdConfig {
   cpuCores?: number;
   gpuEnabled?: boolean;
   gpuMode?: string;
-  playStoreEnabled?: boolean;
+  googlePlayEnabled?: boolean;
+  services?: AvdServices;
   skin?: string;
   imageSysdir?: string;
   targetApi?: string;

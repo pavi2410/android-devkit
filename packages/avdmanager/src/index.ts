@@ -2,9 +2,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveCommandLineToolPath } from "@android-devkit/android-sdk";
 import { runCommand } from "@android-devkit/tool-core";
-import type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions } from "./types.js";
+import type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions, AvdServices } from "./types.js";
 
-export type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions };
+export type { Avd, AvdConfig, DeviceProfile, CreateAvdOptions, AvdServices };
 
 const shouldUseShell = process.platform === "win32";
 
@@ -80,6 +80,22 @@ function parseDeviceProfileBlock(lines: string[]): DeviceProfile | undefined {
   const oem = oemLine?.replace(/^OEM\s*:\s*/, "").trim() ?? "";
 
   return { id, name, oem };
+}
+
+function parseAvdServices(
+  tagId: string | undefined,
+  tagDisplay: string | undefined,
+  googlePlayEnabled: boolean | undefined
+): AvdServices {
+  if (googlePlayEnabled || tagId === "google_apis_playstore" || tagDisplay === "Google Play") {
+    return "google-play-store";
+  }
+
+  if (tagId === "google_apis" || tagDisplay === "Google APIs") {
+    return "google-apis";
+  }
+
+  return "aosp";
 }
 
 /**
@@ -183,6 +199,9 @@ export function parseAvdConfig(content: string): AvdConfig {
     const v = map.get(key);
     return v === "yes" || v === "true" ? true : v === "no" || v === "false" ? false : undefined;
   };
+  const googlePlayEnabled = getBool("PlayStore.enabled");
+  const tagId = getStr("tag.id");
+  const tagDisplay = getStr("tag.display");
 
   return {
     displayName: getStr("avd.ini.displayname"),
@@ -196,7 +215,8 @@ export function parseAvdConfig(content: string): AvdConfig {
     cpuCores: getInt("hw.cpu.ncore"),
     gpuEnabled: getBool("hw.gpu.enabled"),
     gpuMode: getStr("hw.gpu.mode"),
-    playStoreEnabled: getBool("PlayStore.enabled"),
+    googlePlayEnabled,
+    services: parseAvdServices(tagId, tagDisplay, googlePlayEnabled),
     skin: getStr("skin.name"),
     imageSysdir: getStr("image.sysdir.1"),
     targetApi: getStr("target"),

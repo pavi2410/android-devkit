@@ -63,7 +63,12 @@ describe("parseAvdConfig", () => {
 
   it("extracts Play Store enabled", () => {
     const config = parseAvdConfig(fixture);
-    expect(config.playStoreEnabled).toBe(true);
+    expect(config.googlePlayEnabled).toBe(true);
+  });
+
+  it("extracts services variant", () => {
+    const config = parseAvdConfig(fixture);
+    expect(config.services).toBe("google-play-store");
   });
 
   it("extracts image sysdir and target", () => {
@@ -86,5 +91,16 @@ describe("parseAvdConfig", () => {
     const config = parseAvdConfig("");
     expect(config.displayName).toBeUndefined();
     expect(config.ram).toBeUndefined();
+    expect(config.services).toBe("aosp");
+  });
+
+  it("maps Google APIs service variant from tag id", () => {
+    const config = parseAvdConfig("tag.id=google_apis\ntag.display=Google APIs");
+    expect(config.services).toBe("google-apis");
+  });
+
+  it("maps AOSP service variant from default tag", () => {
+    const config = parseAvdConfig("tag.id=default\ntag.display=Default Android System Image");
+    expect(config.services).toBe("aosp");
   });
 });
