@@ -97,16 +97,23 @@ Then install the generated `.vsix` from `apps/extension/build/`.
 android-devkit/
 ├── mise.toml                        # Task runner (build, dev, package, test)
 ├── packages/
-│   ├── adb/                         # @android-devkit/adb  — ADB wrapper
-│   ├── sdk/                         # @android-devkit/sdk  — sdkmanager wrapper
-│   └── avd/                         # @android-devkit/avd  — avdmanager + emulator wrapper
+│   ├── tool-core/                   # @android-devkit/tool-core — shared command execution
+│   ├── android-sdk/                 # @android-devkit/android-sdk — SDK discovery & paths
+│   ├── adb/                         # @android-devkit/adb — ADB wrapper
+│   ├── sdkmanager/                  # @android-devkit/sdkmanager — sdkmanager wrapper
+│   ├── avdmanager/                  # @android-devkit/avdmanager — avdmanager wrapper
+│   ├── emulator/                    # @android-devkit/emulator — emulator wrapper
+│   ├── logcat/                      # @android-devkit/logcat — logcat wrapper
+│   ├── gradle/                      # @android-devkit/gradle — Gradle wrapper
+│   └── android-project/             # @android-devkit/android-project — project inspection
 ├── apps/
 │   ├── extension/                   # VS Code extension
 │   │   └── src/
 │   │       ├── extension.ts         # Entry point
-│   │       ├── commands/            # Command handlers (devices, sdk, avd, gradle, run, command-menu)
-│   │       ├── views/               # TreeView providers (devices, logcat, files, avd, gradle, build-run, project-layout)
-│   │       ├── services/            # AdbService, SdkService, GradleService, terminal-env
+│   │       ├── commands/            # Command handlers + shared IDs (ids.ts, core.ts)
+│   │       ├── config/              # Typed settings & context helpers
+│   │       ├── views/               # TreeView providers
+│   │       ├── services/            # AdbService, SdkService, GradleService, LogcatService
 │   │       └── webviews/            # Webview panel hosts (SDK Manager)
 │   └── webview-sdk-manager/         # SDK Manager webview (Vite + React + Tailwind)
 ├── package.json                     # Bun workspaces config

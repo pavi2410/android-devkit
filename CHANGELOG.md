@@ -1,5 +1,35 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **`@android-devkit/tool-core` package** — shared command execution primitives with `CommandExecutionError`, runner functions, streaming output, and timeout support
+- **`@android-devkit/android-sdk` package** — SDK discovery via `resolveAndroidSdkPath`; platform-tools, emulator, and cmdline-tools path resolution utilities
+- **`@android-devkit/avdmanager` package** — standalone avdmanager wrapper (extracted from `avd`)
+- **`@android-devkit/emulator` package** — standalone emulator wrapper (extracted from `avd`)
+- **`@android-devkit/logcat` package** — standalone logcat wrapper (extracted from `adb`)
+- **`@android-devkit/gradle` package** — standalone Gradle wrapper
+- **`@android-devkit/android-project` package** — `detectAndroidAppPackage`, `detectAndroidModules`, `inspectAndroidModule` for read-only project inspection
+- Centralized command IDs (`commands/ids.ts`) and core command module (`commands/core.ts`)
+- Centralized configuration helpers (`config/settings.ts`, `config/context.ts`) with typed getters
+- AVD services detection (`AvdServices` type: `aosp`, `google-apis`, `google-play-store`)
+- Collapsible AVD tree items with detailed property child nodes
+- Unit tests for tool-core runner, android-sdk path resolution, gradle, and logcat packages
+
+### Changed
+- Monorepo packages restructured: `sdk` → `sdkmanager` + `android-sdk`; `avd` → `avdmanager` + `emulator`; logcat extracted from `adb` into standalone `logcat` package
+- Logcat configuration settings updated; deprecated app package config removed
+- UX surfaces refined across Logcat, Build & Run, AVD Manager, and status bar items
+- `playStoreEnabled` renamed to `googlePlayEnabled` in `AvdConfig`
+- Direct `vscode.workspace.getConfiguration` calls replaced with typed helper functions
+- Hardcoded command ID strings replaced with typed constants throughout
+- Project layout view refactored to use `@android-devkit/android-project` APIs
+- Run command refactored to use `detectAndroidAppPackage` from shared package
+
+### Fixed
+- AVD parsing for Windows line endings and multi-line output
+- Environment variable handling for avdmanager commands on Windows (shell execution, JDK version check skip)
+
 ## [0.3.0] - 2026-03-06
 
 ### Added
