@@ -83,6 +83,10 @@ export class DevicesTreeProvider implements vscode.TreeDataProvider<DevicesTreeI
   getDevice(serial: string): DeviceInfo | undefined {
     return this.devices.find((d) => d.serial === serial);
   }
+
+  dispose(): void {
+    this._onDidChangeTreeData.dispose();
+  }
 }
 
 export class DeviceTreeItem extends vscode.TreeItem {

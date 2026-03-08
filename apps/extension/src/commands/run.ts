@@ -210,6 +210,58 @@ export function registerRunCommands(
         const msg = err instanceof Error ? err.message : "Unknown error";
         vscode.window.showErrorMessage(`Install failed: ${msg}`);
       }
+    }),
+
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.uninstallApp, async () => {
+      const serial = buildRunProvider.getSelectedDeviceSerial();
+      if (!serial) {
+        vscode.window.showWarningMessage("No target device selected.");
+        return;
+      }
+
+      const packageName = await promptForAndroidAppPackage();
+      if (!packageName) return;
+
+      const confirm = await vscode.window.showWarningMessage(
+        `Uninstall ${packageName} from device?`,
+        { modal: true },
+        "Uninstall"
+      );
+      if (confirm !== "Uninstall") return;
+
+      try {
+        await adbService.uninstallPackage(serial, packageName);
+        vscode.window.showInformationMessage(`${packageName} uninstalled.`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        vscode.window.showErrorMessage(`Uninstall failed: ${msg}`);
+      }
+    }),
+
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.clearAppData, async () => {
+      const serial = buildRunProvider.getSelectedDeviceSerial();
+      if (!serial) {
+        vscode.window.showWarningMessage("No target device selected.");
+        return;
+      }
+
+      const packageName = await promptForAndroidAppPackage();
+      if (!packageName) return;
+
+      const confirm = await vscode.window.showWarningMessage(
+        `Clear all data for ${packageName}?`,
+        { modal: true },
+        "Clear Data"
+      );
+      if (confirm !== "Clear Data") return;
+
+      try {
+        await adbService.clearAppData(serial, packageName);
+        vscode.window.showInformationMessage(`Data cleared for ${packageName}.`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        vscode.window.showErrorMessage(`Clear data failed: ${msg}`);
+      }
     })
   );
 }

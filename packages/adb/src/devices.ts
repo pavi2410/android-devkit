@@ -214,6 +214,17 @@ export async function forceStopApp(
 }
 
 /**
+ * Clear app data
+ */
+export async function clearAppData(
+  client: AdbClient,
+  serial: string,
+  packageName: string
+): Promise<void> {
+  await client.shell(`pm clear ${packageName}`, { serial });
+}
+
+/**
  * Detect how a device is connected based on its serial format
  *
  * - `emulator-XXXX` → emulator

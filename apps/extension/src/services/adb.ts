@@ -25,6 +25,8 @@ import {
   pullFile,
   pushFile,
   deleteFile,
+  uninstallPackage,
+  clearAppData,
   type Device,
 } from "@android-devkit/adb";
 
@@ -240,6 +242,14 @@ export class AdbService {
    */
   async forceStopApp(serial: string, packageName: string): Promise<void> {
     return forceStopApp(this.client, serial, packageName);
+  }
+
+  async uninstallPackage(serial: string, packageName: string): Promise<void> {
+    return uninstallPackage(this.client, serial, packageName);
+  }
+
+  async clearAppData(serial: string, packageName: string): Promise<void> {
+    return clearAppData(this.client, serial, packageName);
   }
 
   /**

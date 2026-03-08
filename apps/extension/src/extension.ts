@@ -138,6 +138,7 @@ export function activate(context: vscode.ExtensionContext) {
     logcatService,
     buildRunProvider,
     projectLayoutProvider,
+    avdManagerProvider,
     vscode.window.registerTreeDataProvider("androidDevkit.devices", devicesProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.logcat", logcatProvider),
     vscode.window.registerTreeDataProvider("androidDevkit.fileExplorer", fileExplorerProvider),

@@ -14,6 +14,7 @@ export {
   uninstallPackage,
   launchApp,
   forceStopApp,
+  clearAppData,
   pairDevice,
   listMdnsServices,
   isMdnsSupported,

@@ -309,6 +309,21 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     this.outputChannel.show();
   }
 
+  getEntries(): readonly LogcatEntry[] {
+    return this.entries;
+  }
+
+  static formatEntry(entry: LogcatEntry): string {
+    const time = entry.timestamp.toLocaleTimeString("en-US", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      fractionalSecondDigits: 3,
+    });
+    return `${time} ${entry.pid.toString().padStart(5)} ${entry.tid.toString().padStart(5)} ${entry.level} ${entry.tag}: ${entry.message}`;
+  }
+
   dispose(): void {
     this.outputChannel.dispose();
     this._onDidSessionChange.dispose();

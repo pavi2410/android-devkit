@@ -386,6 +386,24 @@
         "title": "Open SDK Manager",
         "icon": "$(package)",
         "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.uninstallApp",
+        "title": "Uninstall App",
+        "icon": "$(trash)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.clearAppData",
+        "title": "Clear App Data",
+        "icon": "$(clear-all)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.exportLogcat",
+        "title": "Export Logcat to File",
+        "icon": "$(save)",
+        "category": "Android DevKit"
       }
     ],
     "menus": {
@@ -442,6 +460,11 @@
         },
         {
           "command": "androidDevkit.setLogcatPackageFilter",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
+          "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.exportLogcat",
           "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
           "group": "navigation"
         },
@@ -551,6 +574,16 @@
           "command": "androidDevkit.runGradleTask",
           "when": "view == androidDevkit.gradleTasks && viewItem == gradleTask",
           "group": "inline"
+        },
+        {
+          "command": "androidDevkit.uninstallApp",
+          "when": "view == androidDevkit.buildRun && viewItem == buildRunAction",
+          "group": "9_danger"
+        },
+        {
+          "command": "androidDevkit.clearAppData",
+          "when": "view == androidDevkit.buildRun && viewItem == buildRunAction",
+          "group": "9_danger"
         }
       ]
     },
@@ -665,6 +698,7 @@
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
     "dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "package": "mkdir -p build && bunx vsce package --no-dependencies -o build/",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },

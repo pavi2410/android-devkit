@@ -47,6 +47,7 @@ export class ProjectLayoutProvider implements vscode.TreeDataProvider<ProjectLay
 
   dispose(): void {
     for (const w of this.watchers) w.dispose();
+    this._onDidChangeTreeData.dispose();
   }
 
   refresh(): void {

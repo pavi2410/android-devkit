@@ -312,4 +312,34 @@ export function registerLogcatCommands(
       }
     })
   );
+
+  // Export logcat to file
+  context.subscriptions.push(
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.exportLogcat, async () => {
+      const entries = logcatProvider.getEntries();
+      if (entries.length === 0) {
+        vscode.window.showWarningMessage("No logcat entries to export.");
+        return;
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+      const defaultUri = vscode.workspace.workspaceFolders?.[0]?.uri
+        ? vscode.Uri.file(vscode.workspace.workspaceFolders[0].uri.fsPath + `/logcat-${timestamp}.log`)
+        : undefined;
+
+      const uri = await vscode.window.showSaveDialog({
+        defaultUri,
+        filters: { "Log Files": ["log", "txt"] },
+        title: "Export Logcat",
+      });
+
+      if (!uri) return;
+
+      const { LogcatTreeProvider } = await import("../views/logcat");
+      const content = entries.map((e) => LogcatTreeProvider.formatEntry(e)).join("\n");
+      await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
+      vscode.window.showInformationMessage(`Exported ${entries.length} entries to ${uri.fsPath}`);
+    })
+  );
 }

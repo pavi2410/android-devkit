@@ -3,6 +3,7 @@ import type { AdbService } from "../services/adb";
 import type { DevicesTreeProvider, DeviceTreeItem } from "../views/devices";
 import type { FileExplorerProvider } from "../views/file-explorer";
 import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS } from "./ids";
+import { copyImageToClipboard } from "../utils/clipboard";
 
 export function registerDeviceCommands(
   context: vscode.ExtensionContext,
@@ -174,13 +175,16 @@ export function registerDeviceCommands(
               const action = await vscode.window.showInformationMessage(
                 `Screenshot saved to ${filePath}`,
                 "Open",
-                "Show in Explorer"
+                "Show in Explorer",
+                "Copy to Clipboard"
               );
 
               if (action === "Open") {
                 await vscode.commands.executeCommand(VS_CODE_COMMANDS.open, uri);
               } else if (action === "Show in Explorer") {
                 await vscode.commands.executeCommand(VS_CODE_COMMANDS.revealFileInOs, uri);
+              } else if (action === "Copy to Clipboard") {
+                await copyImageToClipboard(filePath);
               }
             }
           );
@@ -234,7 +238,7 @@ export function registerDeviceCommands(
 /**
  * Show device picker if multiple devices connected
  */
-async function selectDevice(adbService: AdbService): Promise<string | undefined> {
+export async function selectDevice(adbService: AdbService, context?: vscode.ExtensionContext): Promise<string | undefined> {
   const devices = await adbService.getDevices();
 
   if (devices.length === 0) {
@@ -246,15 +250,31 @@ async function selectDevice(adbService: AdbService): Promise<string | undefined>
     return devices[0].serial;
   }
 
+  const lastUsed = context?.globalState.get<string>("lastUsedDevice");
+
+  const items = devices.map((d) => ({
+    label: d.name,
+    description: d.serial === lastUsed ? `${d.serial} (last used)` : d.serial,
+    detail: `Android ${d.androidVersion} (API ${d.apiLevel})`,
+    serial: d.serial,
+  }));
+
+  if (lastUsed) {
+    items.sort((a, b) => {
+      if (a.serial === lastUsed) return -1;
+      if (b.serial === lastUsed) return 1;
+      return 0;
+    });
+  }
+
   const selected = await vscode.window.showQuickPick(
-    devices.map((d) => ({
-      label: d.name,
-      description: d.serial,
-      detail: `Android ${d.androidVersion} (API ${d.apiLevel})`,
-      serial: d.serial,
-    })),
+    items,
     { placeHolder: "Select a device" }
   );
+
+  if (selected && context) {
+    await context.globalState.update("lastUsedDevice", selected.serial);
+  }
 
   return selected?.serial;
 }

@@ -77,6 +77,10 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileExplore
       return [new MessageItem(`Error: ${message}`)];
     }
   }
+
+  dispose(): void {
+    this._onDidChangeTreeData.dispose();
+  }
 }
 
 export class FileTreeItem extends vscode.TreeItem {

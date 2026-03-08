@@ -54,6 +54,10 @@ export class GradleTasksProvider implements vscode.TreeDataProvider<GradleTreeIt
       return new GroupItem(g, count);
     });
   }
+
+  dispose(): void {
+    this._onDidChangeTreeData.dispose();
+  }
 }
 
 class GroupItem extends vscode.TreeItem {

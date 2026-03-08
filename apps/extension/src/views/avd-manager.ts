@@ -169,6 +169,7 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
 
   dispose(): void {
     if (this.pollTimer) clearInterval(this.pollTimer);
+    this._onDidChangeTreeData.dispose();
   }
 }
 
