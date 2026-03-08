@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.0] - 2026-03-08
 
 ### Added
 - **`@android-devkit/tool-core` package** — shared command execution primitives with `CommandExecutionError`, runner functions, streaming output, and timeout support
@@ -15,6 +15,12 @@
 - AVD services detection (`AvdServices` type: `aosp`, `google-apis`, `google-play-store`)
 - Collapsible AVD tree items with detailed property child nodes
 - Unit tests for tool-core runner, android-sdk path resolution, gradle, and logcat packages
+- **Extension test suite** — 83 tests with vitest + full VS Code API mock covering all providers and services
+- **Last-used device memory** — persist selected device serial via `ExtensionContext.globalState`
+- **Uninstall app** command — wire up existing `uninstallPackage` ADB primitive
+- **Logcat export to file** — save current buffer (with active filters) to a timestamped `.log`
+- **Screenshot → clipboard** — offer "Copy to Clipboard" after `takeScreenshot`
+- **Clear app data** — `adb shell pm clear <package>` as a right-click action
 
 ### Changed
 - Monorepo packages restructured: `sdk` → `sdkmanager` + `android-sdk`; `avd` → `avdmanager` + `emulator`; logcat extracted from `adb` into standalone `logcat` package
@@ -29,6 +35,7 @@
 ### Fixed
 - AVD parsing for Windows line endings and multi-line output
 - Environment variable handling for avdmanager commands on Windows (shell execution, JDK version check skip)
+- Disposal/cleanup fixes across all providers and services — proper `Disposable` tracking and teardown
 
 ## [0.3.0] - 2026-03-06
 

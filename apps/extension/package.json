@@ -2,7 +2,7 @@
   "name": "android-devkit",
   "displayName": "Android DevKit",
   "description": "Comprehensive Android development tools for VS Code",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "pavi2410",
   "license": "MIT",
   "icon": "icon-128.png",
