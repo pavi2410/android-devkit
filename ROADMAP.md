@@ -29,29 +29,66 @@
 - [x] AVD config parsing (`parseAvdConfig`, `readAvdConfig`, `AvdConfig` type)
 - [x] Test suites for SDK parser, AVD list, AVD config, device profiles (39 tests total)
 - [x] Extension pack removed in favor of standalone extension
+- [x] Extension test suite (83 tests) with vitest + full VS Code API mock
+- [x] Disposal/cleanup fixes across all providers and services
 
 ### QoL Backlog
-- [ ] Last-used device memory (persist selected device serial via `ExtensionContext.globalState`)
+- [x] Last-used device memory (persist selected device serial via `ExtensionContext.globalState`)
+- [x] Uninstall app — wire up existing `uninstallPackage` ADB primitive as a command
+- [x] Logcat export to file — save current buffer (with active filters) to a timestamped `.log`
+- [x] Screenshot → clipboard — offer "Copy to Clipboard" after `takeScreenshot`
+- [x] App data wiper — `adb shell pm clear <package>` as a right-click action
 - [ ] Gradle task search/filter in tree view
-- [ ] Additional `extensionDependencies` — `redhat.java`, `fwcd.kotlin`, `redhat.vscode-xml` (Milestone 4)
-- [ ] Uninstall app — wire up existing `uninstallPackage` ADB primitive as a command
-- [ ] Logcat export to file — save current buffer (with active filters) to a timestamped `.log`
-- [ ] Screenshot → clipboard — offer "Copy to Clipboard" after `takeScreenshot`
-- [ ] `getLogcat` one-shot snapshot — dump captured logcat to a new editor buffer
-- [ ] Multi-module Build & Run — pick assemble task from any module, not just root `app`
-- [ ] App data wiper — `adb shell pm clear <package>` as a right-click action
 - [ ] Device properties panel — expose `getDeviceProps` output in a read-only detail view
 
+**Device & ADB:**
+- [ ] Screen recording — `adb shell screenrecord` with duration picker, save & open
+- [ ] Deep link testing — launch `adb shell am start -d <URI>` with input box
+- [ ] App permission manager — grant/revoke runtime permissions via context menu
+- [ ] App component browser — list activities, services, receivers, providers from `dumpsys`
+- [ ] Wireless ADB auto-discovery — passive mDNS scan, show discoverable devices in welcome view
+- [ ] scrcpy integration — launch device mirroring if scrcpy is installed
+
+**Build & Gradle:**
+- [ ] Gradle build cache stats & clean action
+- [ ] Build time profiler — parse `--profile` output, show slow tasks
+- [ ] Signing config helper — generate/manage debug & release keystores
+
+**Logcat:**
+- [ ] Logcat one-shot snapshot — dump buffered logcat to a new editor tab
+- [ ] Crash log highlighter — detect stack traces, linkify to source files
+- [ ] Logcat regex filter — support regex in text filter field
+
+**Emulator:**
+- [ ] GPS location simulation — set lat/long on running emulator via `geo fix`
+- [ ] Network condition simulation — throttle speed/latency via emulator console
+- [ ] Emulator snapshots — list, load, save snapshots
+
+**Project:**
+- [ ] Resource string translation helper — show missing translations across `values-*/strings.xml`
+- [ ] APK size breakdown — parse APK with `aapt2` and show size by component
+
 ## Milestone 4: v1.0
-- [ ] Stable Kotlin LSP integration
+- [ ] Kotlin language support — recommend/activate `fwcd.kotlin` extension
+- [ ] Java language support — recommend/activate `redhat.java` extension
+- [ ] XML language support — recommend/activate `redhat.vscode-xml` with Android schema
+- [ ] Android-specific code actions (e.g., extract string resource)
+- [ ] Multi-module Build & Run — module-aware variant detection and APK discovery
 - [ ] Polished UI/UX across all views
 - [ ] Comprehensive documentation & changelog
+- [ ] ADB package test coverage
+- [ ] Emulator package test coverage
+- [ ] CI hardening — fix pre-existing test failures in tool-core, sdkmanager, avdmanager
 
 ## Milestone 5: Debugging
 - [ ] Android debug adapter
 - [ ] Breakpoints, watch variables, evaluate expressions
+- [ ] Logcat integration with debug session — auto-start logcat when debugging
+- [ ] Native crash symbolication
 
 ## Milestone 6: Beyond
-- [ ] Layout Inspector
-- [ ] APK Analyzer
-- [ ] Profiler integration
+- [ ] Layout Inspector — dump view hierarchy via `uiautomator dump`
+- [ ] APK Analyzer — parse APK contents, DEX stats, resource table
+- [ ] Profiler integration — CPU/memory sampling via `simpleperf`/`am profile`
+- [ ] Device screen mirroring (scrcpy-based)
+- [ ] Compose Preview (if Kotlin LSP supports it)
