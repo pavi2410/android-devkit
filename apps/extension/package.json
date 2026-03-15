@@ -166,6 +166,24 @@
         "category": "Android DevKit"
       },
       {
+        "command": "androidDevkit.testDeepLink",
+        "title": "Test Deep Link",
+        "icon": "$(link-external)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.recordScreen",
+        "title": "Record Screen",
+        "icon": "$(circle-filled)",
+        "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.managePermissions",
+        "title": "Manage App Permissions",
+        "icon": "$(shield)",
+        "category": "Android DevKit"
+      },
+      {
         "command": "androidDevkit.browseFiles",
         "title": "Browse Device Files",
         "icon": "$(folder-opened)",
@@ -527,6 +545,21 @@
         },
         {
           "command": "androidDevkit.browseFiles",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "1_actions"
+        },
+        {
+          "command": "androidDevkit.testDeepLink",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "1_actions"
+        },
+        {
+          "command": "androidDevkit.recordScreen",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "1_actions"
+        },
+        {
+          "command": "androidDevkit.managePermissions",
           "when": "view == androidDevkit.devices && viewItem == device",
           "group": "1_actions"
         },

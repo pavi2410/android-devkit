@@ -180,6 +180,102 @@ export async function uninstallPackage(
 }
 
 /**
+ * Launch a deep link URI on the device
+ */
+export async function launchDeepLink(
+  client: AdbClient,
+  serial: string,
+  uri: string
+): Promise<string> {
+  const result = await client.shell(
+    `am start -a android.intent.action.VIEW -d '${uri}'`,
+    { serial }
+  );
+  const output = (result.stdout + result.stderr).trim();
+  if (output.includes("Error")) {
+    throw new Error(`Failed to launch deep link: ${output}`);
+  }
+  return output;
+}
+
+/**
+ * Record the device screen
+ */
+export async function recordScreen(
+  client: AdbClient,
+  serial: string,
+  localPath: string,
+  duration: number = 10
+): Promise<void> {
+  const remotePath = "/sdcard/screenrecord.mp4";
+  await client.shell(`screenrecord --time-limit ${duration} ${remotePath}`, {
+    serial,
+    timeout: (duration + 5) * 1000,
+  });
+  await client.exec(["pull", remotePath, localPath], { serial });
+  await client.shell(`rm ${remotePath}`, { serial });
+}
+
+/**
+ * Get runtime permissions for a package
+ */
+export async function getAppPermissions(
+  client: AdbClient,
+  serial: string,
+  packageName: string
+): Promise<{ permission: string; granted: boolean }[]> {
+  const result = await client.shell(`dumpsys package ${packageName}`, {
+    serial,
+  });
+  const permissions: { permission: string; granted: boolean }[] = [];
+
+  // Parse runtime permissions section
+  const runtimeSection = result.stdout.match(
+    /runtime permissions:[\s\S]*?(?=\n\s*\S+:|$)/
+  );
+  if (!runtimeSection) return permissions;
+
+  const lines = runtimeSection[0].split("\n");
+  for (const line of lines) {
+    const match = line.match(
+      /^\s+(android\.permission\.\S+):\s+granted=(\w+)/
+    );
+    if (match) {
+      permissions.push({
+        permission: match[1],
+        granted: match[2] === "true",
+      });
+    }
+  }
+
+  return permissions;
+}
+
+/**
+ * Grant a runtime permission to a package
+ */
+export async function grantPermission(
+  client: AdbClient,
+  serial: string,
+  packageName: string,
+  permission: string
+): Promise<void> {
+  await client.shell(`pm grant ${packageName} ${permission}`, { serial });
+}
+
+/**
+ * Revoke a runtime permission from a package
+ */
+export async function revokePermission(
+  client: AdbClient,
+  serial: string,
+  packageName: string,
+  permission: string
+): Promise<void> {
+  await client.shell(`pm revoke ${packageName} ${permission}`, { serial });
+}
+
+/**
  * Launch an app by package name
  */
 export async function launchApp(

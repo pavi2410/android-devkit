@@ -160,7 +160,8 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
       fractionalSecondDigits: 3,
     });
 
-    const line = `${time} ${entry.pid.toString().padStart(5)} ${entry.tid.toString().padStart(5)} ${entry.level} ${entry.tag}: ${entry.message}`;
+    const message = this.linkifyStackTrace(entry.message);
+    const line = `${time} ${entry.pid.toString().padStart(5)} ${entry.tid.toString().padStart(5)} ${entry.level} ${entry.tag}: ${message}`;
 
     // Use appropriate log level method
     switch (entry.level) {
@@ -182,6 +183,40 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
         break;
       default:
         this.outputChannel.appendLine(line);
+    }
+  }
+
+  /**
+   * Attempt to resolve stack trace file references to workspace paths
+   * so VS Code can auto-linkify them in the output channel.
+   */
+  private linkifyStackTrace(message: string): string {
+    // Match Java/Kotlin stack trace: "at com.example.Class.method(FileName.java:42)"
+    const stackTraceRegex = /^(\s*at\s+\S+)\((\w+\.\w+):(\d+)\)$/;
+    const match = message.match(stackTraceRegex);
+    if (!match) return message;
+
+    const [, prefix, filename, lineNum] = match;
+    const resolved = this.resolvedFileCache.get(filename);
+    if (resolved !== undefined) {
+      return resolved
+        ? `${prefix}(${resolved}:${lineNum})`
+        : message;
+    }
+
+    // Async resolve, won't linkify this occurrence but will cache for next
+    this.resolveSourceFile(filename);
+    return message;
+  }
+
+  private resolvedFileCache = new Map<string, string | null>();
+
+  private async resolveSourceFile(filename: string): Promise<void> {
+    try {
+      const files = await vscode.workspace.findFiles(`**/${filename}`, "**/build/**", 1);
+      this.resolvedFileCache.set(filename, files[0]?.fsPath ?? null);
+    } catch {
+      this.resolvedFileCache.set(filename, null);
     }
   }
 

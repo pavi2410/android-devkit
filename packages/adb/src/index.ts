@@ -25,6 +25,11 @@ export {
   pullFile,
   pushFile,
   deleteFile,
+  launchDeepLink,
+  recordScreen,
+  getAppPermissions,
+  grantPermission,
+  revokePermission,
 } from "./devices.js";
 
 // Types

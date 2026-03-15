@@ -27,6 +27,11 @@ import {
   deleteFile,
   uninstallPackage,
   clearAppData,
+  launchDeepLink,
+  recordScreen,
+  getAppPermissions,
+  grantPermission,
+  revokePermission,
   type Device,
 } from "@android-devkit/adb";
 
@@ -250,6 +255,34 @@ export class AdbService {
 
   async clearAppData(serial: string, packageName: string): Promise<void> {
     return clearAppData(this.client, serial, packageName);
+  }
+
+  async launchDeepLink(serial: string, uri: string): Promise<string> {
+    return launchDeepLink(this.client, serial, uri);
+  }
+
+  async recordScreen(serial: string, duration: number = 10): Promise<string> {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `screenrecord-${timestamp}.mp4`;
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    const dir = workspaceFolder?.uri.fsPath ?? require("os").tmpdir();
+    const localPath = path.join(dir, filename);
+
+    await recordScreen(this.client, serial, localPath, duration);
+    return localPath;
+  }
+
+  async getAppPermissions(serial: string, packageName: string) {
+    return getAppPermissions(this.client, serial, packageName);
+  }
+
+  async grantPermission(serial: string, packageName: string, permission: string): Promise<void> {
+    return grantPermission(this.client, serial, packageName, permission);
+  }
+
+  async revokePermission(serial: string, packageName: string, permission: string): Promise<void> {
+    return revokePermission(this.client, serial, packageName, permission);
   }
 
   /**
