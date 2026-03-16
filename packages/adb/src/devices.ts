@@ -1,6 +1,11 @@
 import type { AdbClient } from "./client.js";
 import type { ConnectionType, Device, DeviceState } from "./types.js";
 
+/** Escape a value for use inside single quotes in an Android shell command. */
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
 /**
  * Parse a device line from `adb devices -l` output
  */
@@ -100,7 +105,8 @@ export async function getApiLevel(
   serial: string
 ): Promise<number> {
   const result = await client.shell("getprop ro.build.version.sdk", { serial });
-  return parseInt(result.stdout.trim(), 10);
+  const level = parseInt(result.stdout.trim(), 10);
+  return isNaN(level) ? 0 : level;
 }
 
 /**
@@ -123,9 +129,9 @@ export async function takeScreenshot(
   localPath: string
 ): Promise<void> {
   const remotePath = "/sdcard/screenshot.png";
-  await client.shell(`screencap -p ${remotePath}`, { serial });
+  await client.shell(`screencap -p ${shellQuote(remotePath)}`, { serial });
   await client.exec(["pull", remotePath, localPath], { serial });
-  await client.shell(`rm ${remotePath}`, { serial });
+  await client.shell(`rm ${shellQuote(remotePath)}`, { serial });
 }
 
 /**
@@ -188,7 +194,7 @@ export async function launchDeepLink(
   uri: string
 ): Promise<string> {
   const result = await client.shell(
-    `am start -a android.intent.action.VIEW -d '${uri}'`,
+    `am start -a android.intent.action.VIEW -d ${shellQuote(uri)}`,
     { serial }
   );
   const output = (result.stdout + result.stderr).trim();
@@ -208,12 +214,12 @@ export async function recordScreen(
   duration: number = 10
 ): Promise<void> {
   const remotePath = "/sdcard/screenrecord.mp4";
-  await client.shell(`screenrecord --time-limit ${duration} ${remotePath}`, {
+  await client.shell(`screenrecord --time-limit ${duration} ${shellQuote(remotePath)}`, {
     serial,
     timeout: (duration + 5) * 1000,
   });
   await client.exec(["pull", remotePath, localPath], { serial });
-  await client.shell(`rm ${remotePath}`, { serial });
+  await client.shell(`rm ${shellQuote(remotePath)}`, { serial });
 }
 
 /**
@@ -224,7 +230,7 @@ export async function getAppPermissions(
   serial: string,
   packageName: string
 ): Promise<{ permission: string; granted: boolean }[]> {
-  const result = await client.shell(`dumpsys package ${packageName}`, {
+  const result = await client.shell(`dumpsys package ${shellQuote(packageName)}`, {
     serial,
   });
   const permissions: { permission: string; granted: boolean }[] = [];
@@ -260,7 +266,7 @@ export async function grantPermission(
   packageName: string,
   permission: string
 ): Promise<void> {
-  await client.shell(`pm grant ${packageName} ${permission}`, { serial });
+  await client.shell(`pm grant ${shellQuote(packageName)} ${shellQuote(permission)}`, { serial });
 }
 
 /**
@@ -272,7 +278,7 @@ export async function revokePermission(
   packageName: string,
   permission: string
 ): Promise<void> {
-  await client.shell(`pm revoke ${packageName} ${permission}`, { serial });
+  await client.shell(`pm revoke ${shellQuote(packageName)} ${shellQuote(permission)}`, { serial });
 }
 
 /**
@@ -286,13 +292,13 @@ export async function launchApp(
 ): Promise<void> {
   if (activity) {
     await client.shell(
-      `am start -n ${packageName}/${activity}`,
+      `am start -n ${shellQuote(`${packageName}/${activity}`)}`,
       { serial }
     );
   } else {
     // Launch the default launcher activity
     await client.shell(
-      `monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`,
+      `monkey -p ${shellQuote(packageName)} -c android.intent.category.LAUNCHER 1`,
       { serial }
     );
   }
@@ -306,7 +312,7 @@ export async function forceStopApp(
   serial: string,
   packageName: string
 ): Promise<void> {
-  await client.shell(`am force-stop ${packageName}`, { serial });
+  await client.shell(`am force-stop ${shellQuote(packageName)}`, { serial });
 }
 
 /**
@@ -317,7 +323,7 @@ export async function clearAppData(
   serial: string,
   packageName: string
 ): Promise<void> {
-  await client.shell(`pm clear ${packageName}`, { serial });
+  await client.shell(`pm clear ${shellQuote(packageName)}`, { serial });
 }
 
 /**
@@ -437,7 +443,7 @@ export async function getPidForPackage(
   serial: string,
   packageName: string
 ): Promise<number | null> {
-  const result = await client.shell(`pidof ${packageName}`, { serial });
+  const result = await client.shell(`pidof ${shellQuote(packageName)}`, { serial });
   const pid = parseInt(result.stdout.trim(), 10);
   return isNaN(pid) ? null : pid;
 }
@@ -450,7 +456,7 @@ export async function listFiles(
   serial: string,
   remotePath: string
 ): Promise<{ name: string; type: "file" | "directory" | "link" | "other"; size: number; permissions: string; modifiedDate: string }[]> {
-  const result = await client.shell(`ls -la ${remotePath}`, { serial });
+  const result = await client.shell(`ls -la ${shellQuote(remotePath)}`, { serial });
   const lines = result.stdout.split("\n");
   const files: { name: string; type: "file" | "directory" | "link" | "other"; size: number; permissions: string; modifiedDate: string }[] = [];
 
@@ -528,7 +534,7 @@ export async function deleteFile(
   remotePath: string,
   recursive: boolean = false
 ): Promise<void> {
-  const cmd = recursive ? `rm -rf ${remotePath}` : `rm ${remotePath}`;
+  const cmd = recursive ? `rm -rf ${shellQuote(remotePath)}` : `rm ${shellQuote(remotePath)}`;
   await client.shell(cmd, { serial });
 }
 
@@ -541,7 +547,7 @@ export async function getEmulatorAvdName(
   serial: string
 ): Promise<string | undefined> {
   try {
-    const result = await client.exec(["-s", serial, "emu", "avd", "name"]);
+    const result = await client.exec(["emu", "avd", "name"], { serial });
     // The output is the AVD name on the first line, followed by "OK" on the second
     const name = result.stdout.split("\n")[0]?.trim();
     return name && name !== "OK" ? name : undefined;

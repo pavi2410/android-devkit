@@ -166,8 +166,8 @@ export class AdbClient {
       });
 
       // Write input and close stdin
-      proc.stdin.write(input + "\n");
-      proc.stdin.end();
+      proc.stdin?.write(input + "\n");
+      proc.stdin?.end();
     });
   }
 
