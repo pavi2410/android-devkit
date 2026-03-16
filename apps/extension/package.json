@@ -428,6 +428,12 @@
         "title": "Export Logcat to File",
         "icon": "$(save)",
         "category": "Android DevKit"
+      },
+      {
+        "command": "androidDevkit.mirrorScreen",
+        "title": "Mirror Screen",
+        "icon": "$(screen-full)",
+        "category": "Android DevKit"
       }
     ],
     "menus": {
@@ -556,6 +562,11 @@
         },
         {
           "command": "androidDevkit.testDeepLink",
+          "when": "view == androidDevkit.devices && viewItem == device",
+          "group": "1_actions"
+        },
+        {
+          "command": "androidDevkit.mirrorScreen",
           "when": "view == androidDevkit.devices && viewItem == device",
           "group": "1_actions"
         },

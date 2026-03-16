@@ -292,6 +292,20 @@ export class AdbService {
   }
 
   /**
+   * Push scrcpy server binary to device
+   */
+  async pushScrcpyServer(serial: string, serverBinary: ReadableStream<Uint8Array>): Promise<void> {
+    return this.client.pushScrcpyServer(serial, serverBinary);
+  }
+
+  /**
+   * Start a scrcpy session for screen mirroring
+   */
+  async startScrcpy(serial: string, options?: { maxSize?: number; videoBitRate?: number; maxFps?: number }) {
+    return this.client.startScrcpy(serial, options);
+  }
+
+  /**
    * Cleanup resources
    */
   dispose(): void {

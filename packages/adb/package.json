@@ -22,8 +22,10 @@
   "dependencies": {
     "@android-devkit/android-sdk": "workspace:*",
     "@yume-chan/adb": "catalog:",
+    "@yume-chan/adb-scrcpy": "catalog:",
     "@yume-chan/adb-server-node-tcp": "catalog:",
     "@yume-chan/android-bin": "catalog:",
+    "@yume-chan/scrcpy": "catalog:",
     "@yume-chan/stream-extra": "catalog:"
   },
   "devDependencies": {

@@ -19,10 +19,12 @@ import { AdbService } from "./services/adb";
 import { SdkService } from "./services/sdk";
 import { GradleService } from "./services/gradle";
 import { LogcatService } from "./services/logcat";
+import { ScrcpyService } from "./services/scrcpy";
 import { registerCommandMenu } from "./commands/command-menu";
 
 let adbService: AdbService;
 let logcatService: LogcatService;
+let scrcpyService: ScrcpyService;
 let sdkService: SdkService;
 let gradleService: GradleService;
 
@@ -33,6 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
   sdkService = new SdkService();
   adbService = new AdbService(sdkService);
   logcatService = new LogcatService(adbService);
+  scrcpyService = new ScrcpyService(adbService, context.extensionUri);
   gradleService = new GradleService();
 
   // Register tree views
@@ -136,6 +139,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     logcatService,
+    scrcpyService,
     logcatProvider,
     devicesProvider,
     fileExplorerProvider,
@@ -175,7 +179,7 @@ export function activate(context: vscode.ExtensionContext) {
     projectLayoutProvider,
     sdkService,
   });
-  registerDeviceCommands(context, adbService, devicesProvider, fileExplorerProvider);
+  registerDeviceCommands(context, adbService, scrcpyService, devicesProvider, fileExplorerProvider);
   registerLogcatCommands(context, adbService, logcatProvider);
   registerSdkCommands(context, sdkService);
   registerAvdCommands(context, sdkService, avdManagerProvider);
@@ -204,6 +208,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  scrcpyService?.dispose();
   logcatService?.dispose();
   adbService?.dispose();
   sdkService?.dispose();

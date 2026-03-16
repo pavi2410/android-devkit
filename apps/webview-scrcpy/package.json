@@ -1,0 +1,31 @@
+{
+  "name": "@android-devkit/webview-scrcpy",
+  "version": "0.1.0",
+  "description": "Screen mirroring webview for Android DevKit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@rolldown/plugin-babel": "^0.2.1",
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/babel__core": "^7.20.5",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "tailwindcss": "^4.2.1",
+    "typescript": "catalog:",
+    "vite": "^8.0.0"
+  }
+}

@@ -3,6 +3,9 @@ import * as fs from "node:fs";
 import { Readable } from "node:stream";
 import { AdbServerClient, LinuxFileType, type Adb } from "@yume-chan/adb";
 import { AdbServerNodeTcpConnector } from "@yume-chan/adb-server-node-tcp";
+import { AdbScrcpyClient, AdbScrcpyOptions3_3_1 } from "@yume-chan/adb-scrcpy";
+import { DefaultServerPath } from "@yume-chan/scrcpy";
+import type { MaybeConsumable } from "@yume-chan/stream-extra";
 import { Logcat, PackageManager } from "@yume-chan/android-bin";
 import type { ReadableStream } from "@yume-chan/stream-extra";
 import { resolvePlatformToolPath } from "@android-devkit/android-sdk";
@@ -13,6 +16,8 @@ import type {
   DeviceState,
   ResolveAdbPathOptions,
 } from "./types.js";
+
+export type ScrcpyClient = AdbScrcpyClient<AdbScrcpyOptions3_3_1<true>>;
 
 /**
  * Collect a ReadableStream<Uint8Array> into a string.
@@ -922,5 +927,40 @@ export class AdbClient {
   async createPackageManager(serial: string): Promise<PackageManager> {
     const adb = await this.getAdb(serial);
     return new PackageManager(adb);
+  }
+
+  /**
+   * Push the scrcpy server binary to the device.
+   */
+  async pushScrcpyServer(
+    serial: string,
+    serverBinary: ReadableStream<MaybeConsumable<Uint8Array>>,
+  ): Promise<void> {
+    const adb = await this.getAdb(serial);
+    await AdbScrcpyClient.pushServer(adb, serverBinary, DefaultServerPath);
+  }
+
+  /**
+   * Start a scrcpy client session for screen mirroring.
+   */
+  async startScrcpy(
+    serial: string,
+    options: {
+      maxSize?: number;
+      videoBitRate?: number;
+      maxFps?: number;
+    } = {},
+  ): Promise<ScrcpyClient> {
+    const adb = await this.getAdb(serial);
+    const scrcpyOptions = new AdbScrcpyOptions3_3_1<true>({
+      video: true,
+      audio: false,
+      control: true,
+      maxSize: options.maxSize ?? 1920,
+      videoBitRate: options.videoBitRate ?? 8_000_000,
+      maxFps: options.maxFps ?? 60,
+      tunnelForward: false,
+    });
+    return AdbScrcpyClient.start(adb, DefaultServerPath, scrcpyOptions);
   }
 }

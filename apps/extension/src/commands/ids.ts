@@ -51,6 +51,7 @@ export const ANDROID_DEVKIT_COMMANDS = {
   testDeepLink: "androidDevkit.testDeepLink",
   recordScreen: "androidDevkit.recordScreen",
   managePermissions: "androidDevkit.managePermissions",
+  mirrorScreen: "androidDevkit.mirrorScreen",
   focusDevices: "androidDevkit.devices.focus",
   focusLogcat: "androidDevkit.logcat.focus",
   focusFileExplorer: "androidDevkit.fileExplorer.focus",

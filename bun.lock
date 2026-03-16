@@ -31,6 +31,27 @@
         "vscode-gradle": "^3.10.1",
       },
     },
+    "apps/webview-scrcpy": {
+      "name": "@android-devkit/webview-scrcpy",
+      "version": "0.1.0",
+      "dependencies": {
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+      },
+      "devDependencies": {
+        "@babel/core": "^7.29.0",
+        "@rolldown/plugin-babel": "^0.2.1",
+        "@tailwindcss/vite": "^4.2.1",
+        "@types/babel__core": "^7.20.5",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^6.0.0",
+        "babel-plugin-react-compiler": "^1.0.0",
+        "tailwindcss": "^4.2.1",
+        "typescript": "catalog:",
+        "vite": "^8.0.0",
+      },
+    },
     "apps/webview-sdk-manager": {
       "name": "@android-devkit/webview-sdk-manager",
       "version": "0.1.0",
@@ -58,8 +79,10 @@
       "dependencies": {
         "@android-devkit/android-sdk": "workspace:*",
         "@yume-chan/adb": "catalog:",
+        "@yume-chan/adb-scrcpy": "catalog:",
         "@yume-chan/adb-server-node-tcp": "catalog:",
         "@yume-chan/android-bin": "catalog:",
+        "@yume-chan/scrcpy": "catalog:",
         "@yume-chan/stream-extra": "catalog:",
       },
       "devDependencies": {
@@ -145,8 +168,10 @@
   "catalog": {
     "@types/node": "^25.0.0",
     "@yume-chan/adb": "^2.5.1",
+    "@yume-chan/adb-scrcpy": "^2.3.2",
     "@yume-chan/adb-server-node-tcp": "^2.5.2",
     "@yume-chan/android-bin": "^2.1.0",
+    "@yume-chan/scrcpy": "^2.3.0",
     "@yume-chan/stream-extra": "^2.1.0",
     "typescript": "^5.9.3",
   },
@@ -168,6 +193,8 @@
     "@android-devkit/sdkmanager": ["@android-devkit/sdkmanager@workspace:packages/sdkmanager"],
 
     "@android-devkit/tool-core": ["@android-devkit/tool-core@workspace:packages/tool-core"],
+
+    "@android-devkit/webview-scrcpy": ["@android-devkit/webview-scrcpy@workspace:apps/webview-scrcpy"],
 
     "@android-devkit/webview-sdk-manager": ["@android-devkit/webview-sdk-manager@workspace:apps/webview-sdk-manager"],
 
@@ -599,6 +626,8 @@
 
     "@yume-chan/adb": ["@yume-chan/adb@2.5.1", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/event": "^2.0.0", "@yume-chan/no-data-view": "^2.0.0", "@yume-chan/stream-extra": "^2.1.0", "@yume-chan/struct": "^2.3.2" } }, "sha512-Nm9ZA0cOxfINE+BlZ7whgqjtoLpaZg1xcV8e0C7YbpG/KOHnQGseGTwbfqJFR6xdqbRvvrNL4jIGGpxvn31ykw=="],
 
+    "@yume-chan/adb-scrcpy": ["@yume-chan/adb-scrcpy@2.3.2", "", { "dependencies": { "@yume-chan/adb": "^2.3.1", "@yume-chan/async": "^4.1.3", "@yume-chan/event": "^2.0.0", "@yume-chan/scrcpy": "^2.3.0", "@yume-chan/stream-extra": "^2.1.0", "@yume-chan/struct": "^2.3.2" } }, "sha512-wg45dep+dYy4MAVMtsooPAo/aXKiGbpGHzcQWoHnl4uE4YJKrZK0sK5L++rPNM0WbwlPdSpZ32jMJT+i0u1Mdw=="],
+
     "@yume-chan/adb-server-node-tcp": ["@yume-chan/adb-server-node-tcp@2.5.2", "", { "dependencies": { "@yume-chan/adb": "^2.5.1", "@yume-chan/async": "^4.1.3", "@yume-chan/stream-extra": "^2.1.0", "@yume-chan/struct": "^2.3.2" } }, "sha512-ga9icFBRUk1n6lO+ymlj83qE+90kMLV8sQA3w9mZAisfdxxEEIq1cvXitFQJvDgL0NuFQruVI4JoZA/wrgpKOw=="],
 
     "@yume-chan/android-bin": ["@yume-chan/android-bin@2.1.0", "", { "dependencies": { "@yume-chan/adb": "^2.1.0", "@yume-chan/stream-extra": "^2.1.0", "@yume-chan/struct": "^2.0.1" } }, "sha512-is97IQwmSTmGCLe8GKO3rRDib2is6Xumo9KzeArgHwizIF0XnpCUm/xIVJLnpifR9PlMyLldDUttTZMTnaNivg=="],
@@ -608,6 +637,8 @@
     "@yume-chan/event": ["@yume-chan/event@2.0.0", "", { "dependencies": { "@yume-chan/async": "^4.0.2" } }, "sha512-z56MDOcX1QlgLUCuA6th3r10negVb7A3gzY//TwSC9ZOvzuRlrAqXcxZf1T3hHfNMk/NFO9RIgQgegXYSfaqLw=="],
 
     "@yume-chan/no-data-view": ["@yume-chan/no-data-view@2.0.0", "", {}, "sha512-0GRJrrt6wtZlbiE92jocHOnaAvjQ+Y7xwwhwOPqLkwf90Kj1JIHJ5Zh4wJVQSQIkzfRSOpM+jeEQdC2K15snlA=="],
+
+    "@yume-chan/scrcpy": ["@yume-chan/scrcpy@2.3.0", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/no-data-view": "^2.0.0", "@yume-chan/stream-extra": "^2.1.0", "@yume-chan/struct": "^2.0.1" } }, "sha512-rpsNvy7H8mf6gVsWYRSkIXmk0wVsP3XOdw3kASokwZkSWtygB2Z1wjoPaEAvaayVCjsz+y/YfG35TOcykEihGw=="],
 
     "@yume-chan/stream-extra": ["@yume-chan/stream-extra@2.1.0", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/struct": "^2.0.1" } }, "sha512-Sq1mDCLTIOu+TbI3VmFhcKL5hi+qZkDA3S+JezZb/AJm4ESC3hB7+LgQIQs3QEK/ZeRwMg37w4IOYHSh30R7BQ=="],
 

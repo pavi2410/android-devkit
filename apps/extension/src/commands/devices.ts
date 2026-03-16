@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
+import type { ScrcpyService } from "../services/scrcpy";
 import type { DevicesTreeProvider, DeviceTreeItem } from "../views/devices";
 import type { FileExplorerProvider } from "../views/file-explorer";
+import { ScrcpyPanel } from "../webviews/scrcpy";
 import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS } from "./ids";
 import { copyImageToClipboard } from "../utils/clipboard";
 import { promptForAndroidAppPackage } from "../utils/android-app";
@@ -9,6 +11,7 @@ import { promptForAndroidAppPackage } from "../utils/android-app";
 export function registerDeviceCommands(
   context: vscode.ExtensionContext,
   adbService: AdbService,
+  scrcpyService: ScrcpyService,
   devicesProvider: DevicesTreeProvider,
   fileExplorerProvider: FileExplorerProvider
 ): void {
@@ -359,6 +362,20 @@ export function registerDeviceCommands(
           const message = error instanceof Error ? error.message : "Unknown error";
           vscode.window.showErrorMessage(`Failed to update permission: ${message}`);
         }
+      }
+    )
+  );
+
+  // Mirror screen
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      ANDROID_DEVKIT_COMMANDS.mirrorScreen,
+      async (item?: DeviceTreeItem) => {
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
+        if (!serial) return;
+
+        const deviceName = item?.device?.name ?? serial;
+        ScrcpyPanel.show(context, scrcpyService, serial, deviceName);
       }
     )
   );

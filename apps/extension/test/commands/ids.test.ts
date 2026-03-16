@@ -30,6 +30,7 @@ describe("commands/ids", () => {
         "launchAvd": "androidDevkit.launchAvd",
         "logcatStatusMenu": "androidDevkit.logcatStatusMenu",
         "managePermissions": "androidDevkit.managePermissions",
+        "mirrorScreen": "androidDevkit.mirrorScreen",
         "openDeviceFile": "androidDevkit.openDeviceFile",
         "openSdkManager": "androidDevkit.openSdkManager",
         "openShell": "androidDevkit.openShell",
