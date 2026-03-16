@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register tree views
   const devicesProvider = new DevicesTreeProvider(adbService);
-  const logcatProvider = new LogcatTreeProvider(logcatService);
+  const logcatProvider = new LogcatTreeProvider(logcatService, context);
   const fileExplorerProvider = new FileExplorerProvider(adbService);
   // SDK Manager is now a webview — no tree provider needed
   const avdManagerProvider = new AvdManagerProvider(sdkService, adbService);

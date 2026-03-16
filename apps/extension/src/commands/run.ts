@@ -43,8 +43,7 @@ export function registerRunCommands(
         try {
           variants = await gradleService.getBuildVariants();
         } catch {
-          vscode.window.showWarningMessage("No build variants found. Make sure a Gradle project with gradlew is open.");
-          return;
+          // fall through to empty check below
         }
       }
       if (variants.length === 0) {

@@ -34,10 +34,16 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private session: LogcatSessionOptions;
   private sessionState: LogcatSessionState = "stopped";
 
-  constructor(private logcatService: LogcatService) {
+  constructor(private logcatService: LogcatService, private context?: vscode.ExtensionContext) {
     this.outputChannel = vscode.window.createOutputChannel("ADK: Logcat", { log: true });
     this.maxEntries = getLogcatMaxLines();
-    this.session = { minLevel: getDefaultLogLevel() };
+
+    // Restore persisted filter state
+    const persistedLevel = context?.workspaceState.get<LogLevel>("logcat.minLevel");
+    const persistedFilter = context?.workspaceState.get<string>("logcat.filter");
+    const persistedPackage = context?.workspaceState.get<string>("logcat.packageName");
+    this.session = { minLevel: persistedLevel ?? getDefaultLogLevel(), packageName: persistedPackage };
+    this.filter = persistedFilter;
 
     // Listen for logcat entries
     logcatService.onLogcatEntry((entry) => {
@@ -214,7 +220,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     }
 
     // Async resolve, won't linkify this occurrence but will cache for next
-    this.resolveSourceFile(filename);
+    void this.resolveSourceFile(filename);
     return message;
   }
 
@@ -315,6 +321,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    */
   setFilter(filter?: string): void {
     this.filter = filter;
+    void this.context?.workspaceState.update("logcat.filter", filter);
     this.emitSessionChange();
     this.refresh();
   }
@@ -324,6 +331,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    */
   setMinLevel(level: LogLevel): void {
     this.session = { ...this.session, minLevel: level };
+    void this.context?.workspaceState.update("logcat.minLevel", level);
     if (this.sessionState === "running") {
       this.start({ minLevel: level });
       return;
@@ -338,6 +346,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    */
   setPackageFilter(packageName?: string, pid?: number): void {
     this.session = { ...this.session, packageName, pid };
+    void this.context?.workspaceState.update("logcat.packageName", packageName);
     if (this.sessionState === "running") {
       this.start({ packageName, pid });
       return;

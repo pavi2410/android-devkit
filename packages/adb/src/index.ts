@@ -30,6 +30,7 @@ export {
   getAppPermissions,
   grantPermission,
   revokePermission,
+  getEmulatorAvdName,
 } from "./devices.js";
 
 // Types

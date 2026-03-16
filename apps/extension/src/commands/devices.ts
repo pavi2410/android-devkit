@@ -102,7 +102,7 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.enableTcpip,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         try {
@@ -123,7 +123,7 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.openShell,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         const adbPath = adbService.getAdbPathPublic();
@@ -145,7 +145,7 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.browseFiles,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         fileExplorerProvider.setDevice(serial);
@@ -159,36 +159,34 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.takeScreenshot,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         try {
-          await vscode.window.withProgress(
+          const filePath = await vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.Notification,
               title: "Taking screenshot...",
               cancellable: false,
             },
-            async () => {
-              const filePath = await adbService.takeScreenshot(serial);
-              const uri = vscode.Uri.file(filePath);
-
-              const action = await vscode.window.showInformationMessage(
-                `Screenshot saved to ${filePath}`,
-                "Open",
-                "Show in Explorer",
-                "Copy to Clipboard"
-              );
-
-              if (action === "Open") {
-                await vscode.commands.executeCommand(VS_CODE_COMMANDS.open, uri);
-              } else if (action === "Show in Explorer") {
-                await vscode.commands.executeCommand(VS_CODE_COMMANDS.revealFileInOs, uri);
-              } else if (action === "Copy to Clipboard") {
-                await copyImageToClipboard(filePath);
-              }
-            }
+            () => adbService.takeScreenshot(serial)
           );
+
+          const uri = vscode.Uri.file(filePath);
+          const action = await vscode.window.showInformationMessage(
+            `Screenshot saved to ${filePath}`,
+            "Open",
+            "Show in Explorer",
+            "Copy to Clipboard"
+          );
+
+          if (action === "Open") {
+            await vscode.commands.executeCommand(VS_CODE_COMMANDS.open, uri);
+          } else if (action === "Show in Explorer") {
+            await vscode.commands.executeCommand(VS_CODE_COMMANDS.revealFileInOs, uri);
+          } else if (action === "Copy to Clipboard") {
+            await copyImageToClipboard(filePath);
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown error";
           vscode.window.showErrorMessage(`Failed to take screenshot: ${message}`);
@@ -202,7 +200,7 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.rebootDevice,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         const mode = await vscode.window.showQuickPick(
@@ -239,7 +237,7 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.testDeepLink,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         const uri = await vscode.window.showInputBox({
@@ -270,7 +268,7 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.recordScreen,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         const duration = await vscode.window.showQuickPick(
@@ -322,7 +320,7 @@ export function registerDeviceCommands(
     vscode.commands.registerCommand(
       ANDROID_DEVKIT_COMMANDS.managePermissions,
       async (item?: DeviceTreeItem) => {
-        const serial = item?.device?.serial ?? (await selectDevice(adbService));
+        const serial = item?.device?.serial ?? (await selectDevice(adbService, context));
         if (!serial) return;
 
         const packageName = await promptForAndroidAppPackage();

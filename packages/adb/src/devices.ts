@@ -531,3 +531,21 @@ export async function deleteFile(
   const cmd = recursive ? `rm -rf ${remotePath}` : `rm ${remotePath}`;
   await client.shell(cmd, { serial });
 }
+
+/**
+ * Get the AVD name for a running emulator instance.
+ * Returns undefined if the device is not an emulator or if the query fails.
+ */
+export async function getEmulatorAvdName(
+  client: AdbClient,
+  serial: string
+): Promise<string | undefined> {
+  try {
+    const result = await client.exec(["-s", serial, "emu", "avd", "name"]);
+    // The output is the AVD name on the first line, followed by "OK" on the second
+    const name = result.stdout.split("\n")[0]?.trim();
+    return name && name !== "OK" ? name : undefined;
+  } catch {
+    return undefined;
+  }
+}

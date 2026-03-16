@@ -23,7 +23,7 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private avds: Avd[] = [];
-  private runningSerials: string[] = [];
+  private runningAvdNames = new Set<string>();
   private pollTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(
@@ -31,22 +31,29 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
     private adbService: AdbService
   ) {
     sdkService.onAvdsChanged(() => this.refresh());
-    adbService.onDevicesChanged(() => this.refreshRunningState());
+    adbService.onDevicesChanged(() => void this.refreshRunningState());
     void setAndroidDevkitContext(CONTEXT_KEYS.hasAvds, false);
     void setAndroidDevkitContext(CONTEXT_KEYS.sdkConfigured, Boolean(this.sdkService.getSdkPath()));
     this.startPolling();
   }
 
   private startPolling(): void {
-    this.pollTimer = setInterval(() => this.refreshRunningState(), 5000);
+    this.pollTimer = setInterval(() => void this.refreshRunningState(), 5000);
   }
 
   private async refreshRunningState(): Promise<void> {
     try {
       const devices = await this.adbService.getDevices();
-      this.runningSerials = devices
-        .filter((d) => d.serial.startsWith("emulator-"))
+      const emulatorSerials = devices
+        .filter((d) => d.serial.startsWith("emulator-") && d.state === "device")
         .map((d) => d.serial);
+
+      const names = new Set<string>();
+      for (const serial of emulatorSerials) {
+        const avdName = await this.adbService.getEmulatorAvdName(serial);
+        if (avdName) names.add(avdName);
+      }
+      this.runningAvdNames = names;
       this._onDidChangeTreeData.fire();
     } catch {
       // ignore poll errors
@@ -85,7 +92,7 @@ export class AvdManagerProvider implements vscode.TreeDataProvider<AvdManagerTre
       }
 
       return this.avds.map((avd) => {
-        const running = this.runningSerials.length > 0 && avd.abi.includes("x86");
+        const running = this.runningAvdNames.has(avd.name);
         return new AvdItem(avd, running);
       });
     } catch (error) {

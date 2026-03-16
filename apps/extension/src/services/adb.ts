@@ -32,6 +32,7 @@ import {
   getAppPermissions,
   grantPermission,
   revokePermission,
+  getEmulatorAvdName,
   type Device,
 } from "@android-devkit/adb";
 
@@ -283,6 +284,13 @@ export class AdbService {
 
   async revokePermission(serial: string, packageName: string, permission: string): Promise<void> {
     return revokePermission(this.client, serial, packageName, permission);
+  }
+
+  /**
+   * Get the AVD name for a running emulator instance
+   */
+  async getEmulatorAvdName(serial: string): Promise<string | undefined> {
+    return getEmulatorAvdName(this.client, serial);
   }
 
   /**
