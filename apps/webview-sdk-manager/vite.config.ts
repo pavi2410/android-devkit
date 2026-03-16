@@ -1,13 +1,14 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import babel from "@rolldown/plugin-babel";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
   build: {
     outDir: "../extension/dist/webview-sdk-manager",
     emptyOutDir: true,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         entryFileNames: "index.js",
         chunkFileNames: "index.js",

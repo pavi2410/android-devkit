@@ -702,35 +702,45 @@
             "id": "configureSdk",
             "title": "Configure Android SDK",
             "description": "Android DevKit needs to know where your Android SDK is installed.\n\nIt will auto-detect from `ANDROID_HOME`, or you can set it manually in settings.\n\n[Set SDK Path](command:androidDevkit.showSdkInfo)",
-            "media": { "markdown": "media/walkthroughs/configureSdk.md" },
+            "media": {
+              "markdown": "media/walkthroughs/configureSdk.md"
+            },
             "completionEvents": ["onSettingChanged:androidDevkit.sdkPath"]
           },
           {
             "id": "exploreDevices",
             "title": "Explore Connected Devices",
             "description": "View and manage your connected Android devices and emulators from the sidebar.\n\n[Open Device Manager](command:androidDevkit.devices.focus)",
-            "media": { "markdown": "media/walkthroughs/exploreDevices.md" },
+            "media": {
+              "markdown": "media/walkthroughs/exploreDevices.md"
+            },
             "completionEvents": ["onView:androidDevkit.devices"]
           },
           {
             "id": "openSdkManager",
             "title": "Open SDK Manager",
             "description": "Install and manage Android SDK platforms, build tools, system images, and more — just like in Android Studio.\n\n[Open SDK Manager](command:androidDevkit.openSdkManager)",
-            "media": { "markdown": "media/walkthroughs/openSdkManager.md" },
+            "media": {
+              "markdown": "media/walkthroughs/openSdkManager.md"
+            },
             "completionEvents": ["onCommand:androidDevkit.openSdkManager"]
           },
           {
             "id": "createAvd",
             "title": "Create a Virtual Device",
             "description": "Create, launch, and manage Android Virtual Devices (AVDs) for testing your apps.\n\n[Open Android Virtual Devices](command:androidDevkit.avdManager.focus)",
-            "media": { "markdown": "media/walkthroughs/createAvd.md" },
+            "media": {
+              "markdown": "media/walkthroughs/createAvd.md"
+            },
             "completionEvents": ["onView:androidDevkit.avdManager"]
           },
           {
             "id": "viewLogcat",
             "title": "View Logcat",
             "description": "Stream real-time device logs to debug your apps.\n\n[Open Logcat](command:androidDevkit.logcat.focus)",
-            "media": { "markdown": "media/walkthroughs/viewLogcat.md" },
+            "media": {
+              "markdown": "media/walkthroughs/viewLogcat.md"
+            },
             "completionEvents": ["onView:androidDevkit.logcat"]
           }
         ]
@@ -739,8 +749,8 @@
   },
   "scripts": {
     "vscode:prepublish": "bun run build",
-    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
-    "dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
+    "build": "rolldown -c --minify",
+    "dev": "rolldown -c --sourcemap --watch",
     "package": "mkdir -p build && bunx vsce package --no-dependencies -o build/",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -759,7 +769,7 @@
   "devDependencies": {
     "@types/vscode": "1.96.0",
     "@vscode/vsce": "^3.7.1",
-    "esbuild": "^0.27.3",
+    "rolldown": "^1.0.0-rc.9",
     "vscode-gradle": "^3.10.1"
   }
 }
