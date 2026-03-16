@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CommandExecutionError } from "../src/errors.js";
@@ -78,6 +78,6 @@ describe("tool-core runner", () => {
       cwd: dir,
     });
 
-    expect(result.stdout).toBe(dir);
+    expect(result.stdout).toBe(realpathSync(dir));
   });
 });
