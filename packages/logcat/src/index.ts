@@ -27,6 +27,10 @@ const PRIORITY_TO_LEVEL: Record<number, LogLevel> = {
 
 const NANOSECONDS_PER_MILLISECOND = BigInt(1e6);
 
+function stripNul(s: string): string {
+  return s.replaceAll("\0", "");
+}
+
 function toLogcatEntry(entry: AndroidLogEntry): LogcatEntry {
   const timestampMs = Number(entry.timestamp / NANOSECONDS_PER_MILLISECOND);
   return {
@@ -34,8 +38,8 @@ function toLogcatEntry(entry: AndroidLogEntry): LogcatEntry {
     pid: entry.pid,
     tid: entry.tid,
     level: PRIORITY_TO_LEVEL[entry.priority] ?? "V",
-    tag: entry.tag,
-    message: entry.message,
+    tag: stripNul(entry.tag),
+    message: stripNul(entry.message),
   };
 }
 

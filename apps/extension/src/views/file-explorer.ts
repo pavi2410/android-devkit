@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import type { AdbService } from "../services/adb";
-import { CONTEXT_KEYS } from "../commands/ids";
+import { ANDROID_DEVKIT_COMMANDS, CONTEXT_KEYS } from "../commands/ids";
 import { setAndroidDevkitContext } from "../config/context";
 
 type FileEntry = {
@@ -9,6 +9,8 @@ type FileEntry = {
   size: number;
   permissions: string;
   modifiedDate: string;
+  linkTarget?: string;
+  linkTargetType?: "file" | "directory";
 };
 
 type FileExplorerItem = FileTreeItem | MessageItem;
@@ -61,14 +63,18 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileExplore
       const files = await this.adbService.listFiles(this.currentDevice, remotePath);
 
       if (files.length === 0) {
-        return [new MessageItem("Empty directory")];
+        return [];
       }
 
+      const isExpandable = (f: FileEntry) =>
+        f.type === "directory" || (f.type === "link" && f.linkTargetType !== "file");
       return files
         .sort((a: FileEntry, b: FileEntry) => {
-          // Directories first, then alphabetical
-          if (a.type === "directory" && b.type !== "directory") return -1;
-          if (a.type !== "directory" && b.type === "directory") return 1;
+          // Expandable entries first, then alphabetical
+          const aExp = isExpandable(a);
+          const bExp = isExpandable(b);
+          if (aExp && !bExp) return -1;
+          if (!aExp && bExp) return 1;
           return a.name.localeCompare(b.name);
         })
         .map((f: FileEntry) => new FileTreeItem(f, remotePath, this.currentDevice!));
@@ -91,26 +97,43 @@ export class FileTreeItem extends vscode.TreeItem {
     parentPath: string,
     public readonly deviceSerial: string
   ) {
-    const isDir = file.type === "directory";
+    const isLinkToDir = file.type === "link" && file.linkTargetType !== "file";
+    const isExpandable = file.type === "directory" || isLinkToDir;
     super(
       file.name,
-      isDir ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
+      isExpandable ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
     );
 
     this.remotePath = parentPath === "/" ? `/${file.name}` : `${parentPath}/${file.name}`;
 
-    if (isDir) {
+    if (file.type === "directory") {
       this.iconPath = new vscode.ThemeIcon("folder");
+      this.contextValue = "directory";
+    } else if (file.type === "link" && isLinkToDir) {
+      this.iconPath = new vscode.ThemeIcon("file-symlink-directory");
       this.contextValue = "directory";
     } else if (file.type === "link") {
       this.iconPath = new vscode.ThemeIcon("file-symlink-file");
       this.contextValue = "file";
+      this.command = {
+        command: ANDROID_DEVKIT_COMMANDS.openDeviceFile,
+        title: "Open File",
+        arguments: [this],
+      };
     } else {
       this.iconPath = vscode.ThemeIcon.File;
       this.contextValue = "file";
+      this.command = {
+        command: ANDROID_DEVKIT_COMMANDS.openDeviceFile,
+        title: "Open File",
+        arguments: [this],
+      };
     }
 
-    this.description = this.formatSize(file.size);
+    if (file.linkTarget) {
+      this.description = `→ ${file.linkTarget}`;
+    }
+
     this.tooltip = this.createTooltip();
   }
 
@@ -128,6 +151,9 @@ export class FileTreeItem extends vscode.TreeItem {
     md.appendMarkdown(`- Size: ${this.formatSize(this.file.size)}\n`);
     md.appendMarkdown(`- Permissions: \`${this.file.permissions}\`\n`);
     md.appendMarkdown(`- Modified: ${this.file.modifiedDate}\n`);
+    if (this.file.linkTarget) {
+      md.appendMarkdown(`- Target: \`${this.file.linkTarget}\`\n`);
+    }
     return md;
   }
 }

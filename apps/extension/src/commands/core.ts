@@ -62,6 +62,29 @@ export function registerCoreCommands(
         vscode.window.showErrorMessage(`Failed to pull file: ${msg}`);
       }
     }),
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.openDeviceFile, async (item) => {
+      if (!item?.remotePath || !item?.deviceSerial) return;
+      const MAX_TEXT_FILE_SIZE = 512 * 1024; // 512 KB
+      if (item.file.size > MAX_TEXT_FILE_SIZE) {
+        vscode.window.showWarningMessage(`File too large to open inline (${(item.file.size / 1024).toFixed(0)} KB). Use "Download from Device" instead.`);
+        return;
+      }
+      try {
+        const content = await adbService.readFileContent(item.deviceSerial, item.remotePath);
+        if (isBinary(content)) {
+          vscode.window.showWarningMessage("This appears to be a binary file. Use \"Download from Device\" instead.");
+          return;
+        }
+        const doc = await vscode.workspace.openTextDocument({
+          content: content.toString("utf-8"),
+          language: detectLanguage(item.file.name),
+        });
+        await vscode.window.showTextDocument(doc, { preview: true });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        vscode.window.showErrorMessage(`Failed to open file: ${msg}`);
+      }
+    }),
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.pushFile, async (item) => {
       if (!item?.remotePath || !item?.deviceSerial) return;
       const uris = await vscode.window.showOpenDialog({ title: "Select file to push" });
@@ -149,4 +172,48 @@ export function registerCoreCommands(
       }
     })
   );
+}
+
+const BINARY_EXTENSIONS = new Set([
+  ".apk", ".dex", ".so", ".jar", ".zip", ".gz", ".tar", ".bz2",
+  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico",
+  ".mp3", ".mp4", ".ogg", ".wav", ".aac", ".flac",
+  ".ttf", ".otf", ".woff", ".woff2",
+  ".db", ".sqlite", ".sqlite3",
+]);
+
+function isBinary(buf: Buffer): boolean {
+  const check = buf.subarray(0, Math.min(buf.length, 8192));
+  for (let i = 0; i < check.length; i++) {
+    if (check[i] === 0) return true;
+  }
+  return false;
+}
+
+const LANG_MAP: Record<string, string> = {
+  ".xml": "xml",
+  ".json": "json",
+  ".properties": "properties",
+  ".prop": "properties",
+  ".conf": "ini",
+  ".cfg": "ini",
+  ".ini": "ini",
+  ".sh": "shellscript",
+  ".py": "python",
+  ".java": "java",
+  ".kt": "kotlin",
+  ".js": "javascript",
+  ".html": "html",
+  ".css": "css",
+  ".txt": "plaintext",
+  ".log": "log",
+  ".md": "markdown",
+  ".yaml": "yaml",
+  ".yml": "yaml",
+  ".csv": "csv",
+};
+
+function detectLanguage(filename: string): string | undefined {
+  const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
+  return LANG_MAP[ext];
 }

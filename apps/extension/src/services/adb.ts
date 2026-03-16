@@ -182,6 +182,13 @@ export class AdbService {
   }
 
   /**
+   * Read file content from device into a Buffer
+   */
+  async readFileContent(serial: string, remotePath: string): Promise<Buffer> {
+    return this.client.readFileContent(serial, remotePath);
+  }
+
+  /**
    * Pull file from device
    */
   async pullFile(serial: string, remotePath: string, localPath: string): Promise<void> {

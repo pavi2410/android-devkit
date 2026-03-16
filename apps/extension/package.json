@@ -250,6 +250,12 @@
         "category": "Android DevKit"
       },
       {
+        "command": "androidDevkit.openDeviceFile",
+        "title": "Open Device File",
+        "icon": "$(go-to-file)",
+        "category": "Android DevKit"
+      },
+      {
         "command": "androidDevkit.pushFile",
         "title": "Upload to Device",
         "icon": "$(cloud-upload)",

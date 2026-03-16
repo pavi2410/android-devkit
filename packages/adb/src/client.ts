@@ -720,34 +720,97 @@ export class AdbClient {
       size: number;
       permissions: string;
       modifiedDate: string;
+      linkTarget?: string;
+      linkTargetType?: "file" | "directory";
     }[]
   > {
     const adb = await this.getAdb(serial);
     const sync = await adb.sync();
     try {
       const entries = await sync.readdir(remotePath);
-      return entries
-        .filter((e) => e.name !== "." && e.name !== "..")
-        .map((entry) => {
-          let type: "file" | "directory" | "link" | "other" = "other";
-          if (entry.type === LinuxFileType.Directory) type = "directory";
-          else if (entry.type === LinuxFileType.File) type = "file";
-          else if (entry.type === LinuxFileType.Link) type = "link";
+      const filtered = entries.filter((e) => e.name !== "." && e.name !== "..");
 
-          const perm = entry.permission;
-          const permStr = formatPermissions(entry.type, perm);
+      // Resolve symlink targets in batch
+      const linkEntries = filtered.filter((e) => e.type === LinuxFileType.Link);
+      const linkTargets = new Map<string, { target: string; targetType: "file" | "directory" }>();
 
-          const mtime = new Date(Number(entry.mtime) * 1000);
-          const modifiedDate = formatDate(mtime);
+      if (linkEntries.length > 0) {
+        const basePath = remotePath.endsWith("/") ? remotePath : `${remotePath}/`;
 
-          return {
-            name: entry.name,
-            type,
-            size: Number(entry.size),
-            permissions: permStr,
-            modifiedDate,
-          };
-        });
+        // Batch readlink for all symlinks
+        const readlinkCmd = linkEntries
+          .map((e) => `readlink ${shellQuote(`${basePath}${e.name}`)}`)
+          .join("; ");
+        const readlinkOutput = await this.shell(serial, readlinkCmd);
+        const targets = readlinkOutput.trim().split("\n");
+
+        // Determine target types using stat (follows symlinks)
+        for (let i = 0; i < linkEntries.length; i++) {
+          const target = targets[i]?.trim();
+          if (!target) continue;
+          try {
+            const fullPath = `${basePath}${linkEntries[i].name}`;
+            const statResult = await sync.stat(fullPath);
+            const targetType = statResult.type === LinuxFileType.Directory ? "directory" : "file";
+            linkTargets.set(linkEntries[i].name, { target, targetType });
+          } catch {
+            // Broken symlink or inaccessible target
+            linkTargets.set(linkEntries[i].name, { target, targetType: "file" });
+          }
+        }
+      }
+
+      return filtered.map((entry) => {
+        let type: "file" | "directory" | "link" | "other" = "other";
+        if (entry.type === LinuxFileType.Directory) type = "directory";
+        else if (entry.type === LinuxFileType.File) type = "file";
+        else if (entry.type === LinuxFileType.Link) type = "link";
+
+        const perm = entry.permission;
+        const permStr = formatPermissions(entry.type, perm);
+
+        const mtime = new Date(Number(entry.mtime) * 1000);
+        const modifiedDate = formatDate(mtime);
+
+        const linkInfo = linkTargets.get(entry.name);
+
+        return {
+          name: entry.name,
+          type,
+          size: Number(entry.size),
+          permissions: permStr,
+          modifiedDate,
+          ...(linkInfo && { linkTarget: linkInfo.target, linkTargetType: linkInfo.targetType }),
+        };
+      });
+    } finally {
+      await sync.dispose();
+    }
+  }
+
+  /**
+   * Read file content from device into a Buffer via sync protocol.
+   */
+  async readFileContent(
+    serial: string,
+    remotePath: string,
+  ): Promise<Buffer> {
+    const adb = await this.getAdb(serial);
+    const sync = await adb.sync();
+    try {
+      const stream = sync.read(remotePath);
+      const reader = stream.getReader();
+      const chunks: Uint8Array[] = [];
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) chunks.push(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      return Buffer.concat(chunks);
     } finally {
       await sync.dispose();
     }

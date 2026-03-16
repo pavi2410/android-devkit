@@ -18,6 +18,7 @@ export const ANDROID_DEVKIT_COMMANDS = {
   setLogcatPackageFilter: "androidDevkit.setLogcatPackageFilter",
   refreshFileExplorer: "androidDevkit.refreshFileExplorer",
   pullFile: "androidDevkit.pullFile",
+  openDeviceFile: "androidDevkit.openDeviceFile",
   pushFile: "androidDevkit.pushFile",
   deleteRemoteFile: "androidDevkit.deleteRemoteFile",
   showSdkInfo: "androidDevkit.showSdkInfo",
