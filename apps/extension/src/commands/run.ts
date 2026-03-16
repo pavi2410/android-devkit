@@ -53,7 +53,8 @@ export function registerRunCommands(
       }
       const items = variants.map((v) => ({
         label: v.name,
-        description: v.assembleTask,
+        description: `:${v.module}`,
+        detail: v.assembleTask,
         variant: v,
       }));
       const selected = await vscode.window.showQuickPick(items, {
@@ -103,19 +104,17 @@ export function registerRunCommands(
       outputChannel.show(true);
       outputChannel.appendLine(`Building variant: ${variant.name} (${variant.assembleTask})`);
 
-      await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `Building ${variant.name}…`, cancellable: true },
-        async (_progress, token) => {
-          try {
-            await gradleService.runTask(variant.assembleTask, outputChannel, token);
-            const apkPath = gradleService.findApk(variant);
-            await showBuildResultActions(`${variant.name} build succeeded.`, outputChannel, apkPath);
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unknown error";
-            vscode.window.showErrorMessage(`Build failed: ${msg}`);
-          }
-        }
-      );
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: `Building ${variant.name}…`, cancellable: true },
+          (_progress, token) => gradleService.runTask(variant.assembleTask, outputChannel, token)
+        );
+        const apkPath = gradleService.findApk(variant);
+        void showBuildResultActions(`${variant.name} build succeeded.`, outputChannel, apkPath);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        vscode.window.showErrorMessage(`Build failed: ${msg}`);
+      }
     }),
 
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.runOnDevice, async () => {
@@ -131,16 +130,16 @@ export function registerRunCommands(
         return;
       }
 
-      const packageName = await promptForAndroidAppPackage();
+      const packageName = await promptForAndroidAppPackage(variant.module);
       if (!packageName) return;
 
       outputChannel.clear();
       outputChannel.show(true);
 
-      await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `Running ${variant.name} on device…`, cancellable: true },
-        async (_progress, token) => {
-          try {
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: `Running ${variant.name} on device…`, cancellable: true },
+          async (_progress, token) => {
             outputChannel.appendLine(`[1/3] Building ${variant.assembleTask}…`);
             await gradleService.runTask(variant.assembleTask, outputChannel, token);
 
@@ -156,14 +155,14 @@ export function registerRunCommands(
             await adbService.launchApp(serial, packageName);
 
             outputChannel.appendLine(`\n✓ App launched successfully.`);
-            await showBuildResultActions(`${packageName} is running on the selected device.`, outputChannel, apkPath);
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unknown error";
-            outputChannel.appendLine(`\n✗ Error: ${msg}`);
-            vscode.window.showErrorMessage(`Run failed: ${msg}`);
           }
-        }
-      );
+        );
+        void showBuildResultActions(`${packageName} is running on the selected device.`, outputChannel);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        outputChannel.appendLine(`\n✗ Error: ${msg}`);
+        vscode.window.showErrorMessage(`Run failed: ${msg}`);
+      }
     }),
 
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.stopApp, async () => {

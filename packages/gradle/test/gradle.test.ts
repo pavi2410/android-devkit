@@ -103,8 +103,8 @@ describe("gradle package", () => {
     proc.emit("close", 0);
 
     await expect(promise).resolves.toEqual([
-      { name: "Debug", assembleTask: "assembleDebug" },
-      { name: "Release", assembleTask: "assembleRelease" },
+      { name: "Debug", assembleTask: "assembleDebug", module: "app" },
+      { name: "Release", assembleTask: "assembleRelease", module: "app" },
     ]);
   });
 
@@ -116,6 +116,6 @@ describe("gradle package", () => {
     const apkPath = join(apkDir, "app-debug.apk");
     writeFileSync(apkPath, "binary");
 
-    expect(findApk(dir, { name: "Debug", assembleTask: "assembleDebug" })).toBe(apkPath);
+    expect(findApk(dir, { name: "Debug", assembleTask: "assembleDebug", module: "app" })).toBe(apkPath);
   });
 });

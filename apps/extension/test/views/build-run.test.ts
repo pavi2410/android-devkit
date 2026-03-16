@@ -102,12 +102,12 @@ describe("BuildRunProvider", () => {
     });
 
     it("shows selected variant and device", async () => {
-      await provider.setVariant({ name: "debug", assembleTask: "assembleDebug" });
+      await provider.setVariant({ name: "debug", assembleTask: "assembleDebug", module: "app" });
       await provider.setDevice("emu-5554", "Pixel 6");
 
       const children = await provider.getChildren();
 
-      expect(children[0].description).toBe("debug");
+      expect(children[0].description).toBe("debug (:app)");
       expect(children[1].description).toBe("Pixel 6");
     });
   });

@@ -1,13 +1,13 @@
 import * as vscode from "vscode";
 import { detectAndroidAppPackage } from "@android-devkit/android-project";
 
-export function resolveDetectedAndroidAppPackage(): string | undefined {
+export function resolveDetectedAndroidAppPackage(module?: string): string | undefined {
   const projectRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  return projectRoot ? detectAndroidAppPackage(projectRoot) : undefined;
+  return projectRoot ? detectAndroidAppPackage(projectRoot, module) : undefined;
 }
 
-export async function promptForAndroidAppPackage(): Promise<string | undefined> {
-  const resolved = resolveDetectedAndroidAppPackage();
+export async function promptForAndroidAppPackage(module?: string): Promise<string | undefined> {
+  const resolved = resolveDetectedAndroidAppPackage(module);
   if (resolved) {
     return resolved;
   }

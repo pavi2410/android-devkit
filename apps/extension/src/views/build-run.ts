@@ -83,7 +83,9 @@ export class BuildRunProvider implements vscode.TreeDataProvider<BuildRunTreeIte
 
     await this.ensureInitialized();
 
-    const variantLabel = this.selectedVariant?.name ?? "Not selected";
+    const variantLabel = this.selectedVariant
+      ? `${this.selectedVariant.name} (:${this.selectedVariant.module})`
+      : "Not selected";
     const deviceLabel = this.selectedDeviceLabel ?? "Not selected";
 
     return [

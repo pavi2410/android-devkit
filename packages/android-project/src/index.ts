@@ -25,17 +25,44 @@ export interface AndroidModuleInspection {
   generatedResourceDirectories: string[];
 }
 
-export function detectAndroidAppPackage(projectRoot: string): string | undefined {
-  const manifestPaths = [
-    path.join(projectRoot, "app", "src", "main", "AndroidManifest.xml"),
-    path.join(projectRoot, "src", "main", "AndroidManifest.xml"),
-    path.join(projectRoot, "AndroidManifest.xml"),
-  ];
+export function detectAndroidAppPackage(projectRoot: string, module?: string): string | undefined {
+  // If a specific module is given, check it first
+  const moduleDirs = module
+    ? [path.join(projectRoot, module.replace(/:/g, path.sep))]
+    : [path.join(projectRoot, "app"), projectRoot];
 
-  for (const manifestPath of manifestPaths) {
-    const detected = detectManifestPackage(manifestPath);
+  for (const moduleDir of moduleDirs) {
+    // Try build.gradle(.kts) first — modern projects define applicationId/namespace there
+    for (const ext of ["build.gradle.kts", "build.gradle"]) {
+      const detected = detectGradleAppId(path.join(moduleDir, ext));
+      if (detected) return detected;
+    }
+
+    // Fall back to AndroidManifest.xml package attribute
+    const detected = detectManifestPackage(path.join(moduleDir, "src", "main", "AndroidManifest.xml"));
     if (detected) return detected;
   }
+
+  // Last resort: bare manifest at project root
+  if (!module) {
+    const detected = detectManifestPackage(path.join(projectRoot, "AndroidManifest.xml"));
+    if (detected) return detected;
+  }
+
+  return undefined;
+}
+
+function detectGradleAppId(gradleFile: string): string | undefined {
+  if (!fs.existsSync(gradleFile)) return undefined;
+  const content = fs.readFileSync(gradleFile, "utf-8");
+
+  // Match: applicationId = "com.example.app" or applicationId "com.example.app"
+  const appIdMatch = content.match(/applicationId\s*[=(]\s*["']([^"']+)["']/);
+  if (appIdMatch) return appIdMatch[1];
+
+  // Match: namespace = "com.example.app" or namespace "com.example.app"
+  const nsMatch = content.match(/namespace\s*[=(]\s*["']([^"']+)["']/);
+  if (nsMatch) return nsMatch[1];
 
   return undefined;
 }

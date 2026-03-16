@@ -12,6 +12,7 @@ export interface GradleTask {
 export interface BuildVariant {
   name: string;
   assembleTask: string;
+  module: string;
 }
 
 export function getGradlewPath(projectFolder: string): string | undefined {
@@ -75,12 +76,25 @@ export async function listTasks(projectFolder: string): Promise<GradleTask[]> {
 
 export async function getBuildVariants(projectFolder: string): Promise<BuildVariant[]> {
   const tasks = await listTasks(projectFolder);
+  const seen = new Set<string>();
   return tasks
     .filter((task) => task.name.startsWith("assemble") && task.name !== "assemble")
-    .map((task) => ({
-      name: task.name.replace(/^assemble/, ""),
-      assembleTask: task.name,
-    }));
+    .filter((task) => {
+      // Deduplicate: prefer module-specific tasks over root-level ones
+      const key = `${task.project}:${task.name}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((task) => {
+      const module = task.project === ":" ? "app" : task.project.replace(/^:/, "");
+      const fullTask = task.project === ":" ? task.name : `${task.project}:${task.name}`;
+      return {
+        name: task.name.replace(/^assemble/, ""),
+        assembleTask: fullTask,
+        module,
+      };
+    });
 }
 
 export function runTask(projectFolder: string, taskName: string): StreamingCommand {
@@ -97,9 +111,12 @@ export function runTask(projectFolder: string, taskName: string): StreamingComma
 
 export function findApk(projectFolder: string, variant: BuildVariant): string | undefined {
   const variantLower = variant.name.toLowerCase();
+  const modulePath = variant.module.replace(/:/g, path.sep);
+  const moduleDir = path.join(projectFolder, modulePath);
+  const moduleName = path.basename(modulePath);
   const candidates = [
-    path.join(projectFolder, "app", "build", "outputs", "apk", variantLower, `app-${variantLower}.apk`),
-    path.join(projectFolder, "app", "build", "outputs", "apk", variantLower, `app-${variantLower}-unsigned.apk`),
+    path.join(moduleDir, "build", "outputs", "apk", variantLower, `${moduleName}-${variantLower}.apk`),
+    path.join(moduleDir, "build", "outputs", "apk", variantLower, `${moduleName}-${variantLower}-unsigned.apk`),
   ];
   return candidates.find((candidate) => fs.existsSync(candidate));
 }
