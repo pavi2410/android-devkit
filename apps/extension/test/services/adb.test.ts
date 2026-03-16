@@ -1,44 +1,40 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { mocks, MockAdbClient } = vi.hoisted(() => {
-  const m = {
-    getDevices: vi.fn(),
-    getDeviceName: vi.fn(),
-    getApiLevel: vi.fn(),
-    getAndroidVersion: vi.fn(),
-    takeScreenshot: vi.fn(),
-    reboot: vi.fn(),
-    installApk: vi.fn(),
-    uninstallPackage: vi.fn(),
-    clearAppData: vi.fn(),
-    launchApp: vi.fn(),
-    forceStopApp: vi.fn(),
-    pairDevice: vi.fn(),
-    listMdnsServices: vi.fn(),
-    isMdnsSupported: vi.fn(),
-    enableTcpip: vi.fn(),
-    listPackages: vi.fn(),
-    getPidForPackage: vi.fn(),
-    listFiles: vi.fn(),
-    pullFile: vi.fn(),
-    pushFile: vi.fn(),
-    deleteFile: vi.fn(),
-    resolveAdbPath: vi.fn().mockReturnValue("/usr/bin/adb"),
-  };
-
+const { MockAdbClient } = vi.hoisted(() => {
   class Client {
-    exec = vi.fn();
-    shell = vi.fn();
+    getDevices = vi.fn();
+    getDeviceName = vi.fn();
+    getApiLevel = vi.fn();
+    getAndroidVersion = vi.fn();
+    takeScreenshot = vi.fn();
+    reboot = vi.fn();
+    installApk = vi.fn();
+    uninstallPackage = vi.fn();
+    clearAppData = vi.fn();
+    launchApp = vi.fn();
+    forceStopApp = vi.fn();
+    pairDevice = vi.fn();
+    listMdnsServices = vi.fn();
+    isMdnsSupported = vi.fn();
+    enableTcpip = vi.fn();
+    listPackages = vi.fn();
+    getPidForPackage = vi.fn();
+    listFiles = vi.fn();
+    pullFile = vi.fn();
+    pushFile = vi.fn();
+    deleteFile = vi.fn();
     connect = vi.fn().mockResolvedValue("connected");
     disconnect = vi.fn().mockResolvedValue("disconnected");
+    dispose = vi.fn();
+    getAdbPath = vi.fn().mockReturnValue("/usr/bin/adb");
     constructor(_opts?: any) {}
   }
 
-  return { mocks: m, MockAdbClient: Client };
+  return { MockAdbClient: Client };
 });
 
 vi.mock("@android-devkit/adb", () => ({
-  ...mocks,
+  resolveAdbPath: vi.fn().mockReturnValue("/usr/bin/adb"),
   AdbClient: MockAdbClient,
 }));
 
@@ -52,6 +48,10 @@ function createMockSdkService() {
   } as any;
 }
 
+function getMockClient(service: AdbService): InstanceType<typeof MockAdbClient> {
+  return (service as any).client;
+}
+
 describe("AdbService", () => {
   let service: AdbService;
 
@@ -62,12 +62,13 @@ describe("AdbService", () => {
 
   describe("getDevices", () => {
     it("enriches devices with name, apiLevel, androidVersion", async () => {
-      mocks.getDevices.mockResolvedValue([
+      const client = getMockClient(service);
+      client.getDevices.mockResolvedValue([
         { serial: "emulator-5554", state: "device", model: "sdk_phone", connectionType: "emulator", isEmulator: true },
       ]);
-      mocks.getDeviceName.mockResolvedValue("Pixel 6");
-      mocks.getApiLevel.mockResolvedValue(33);
-      mocks.getAndroidVersion.mockResolvedValue("13");
+      client.getDeviceName.mockResolvedValue("Pixel 6");
+      client.getApiLevel.mockResolvedValue(33);
+      client.getAndroidVersion.mockResolvedValue("13");
 
       const devices = await service.getDevices();
 
@@ -81,12 +82,13 @@ describe("AdbService", () => {
     });
 
     it("falls back to basic info on error", async () => {
-      mocks.getDevices.mockResolvedValue([
+      const client = getMockClient(service);
+      client.getDevices.mockResolvedValue([
         { serial: "abc123", state: "device", model: "Nexus", connectionType: "usb", isEmulator: false },
       ]);
-      mocks.getDeviceName.mockRejectedValue(new Error("timeout"));
-      mocks.getApiLevel.mockRejectedValue(new Error("timeout"));
-      mocks.getAndroidVersion.mockRejectedValue(new Error("timeout"));
+      client.getDeviceName.mockRejectedValue(new Error("timeout"));
+      client.getApiLevel.mockRejectedValue(new Error("timeout"));
+      client.getAndroidVersion.mockRejectedValue(new Error("timeout"));
 
       const devices = await service.getDevices();
 
@@ -98,7 +100,8 @@ describe("AdbService", () => {
     });
 
     it("uses serial as name when model is missing for non-ready devices", async () => {
-      mocks.getDevices.mockResolvedValue([
+      const client = getMockClient(service);
+      client.getDevices.mockResolvedValue([
         { serial: "abc123", state: "offline", model: undefined, connectionType: "usb", isEmulator: false },
       ]);
 
@@ -122,23 +125,24 @@ describe("AdbService", () => {
 
   describe("takeScreenshot", () => {
     it("generates timestamped path", async () => {
-      mocks.takeScreenshot.mockResolvedValue(undefined);
+      const client = getMockClient(service);
+      client.takeScreenshot.mockResolvedValue(undefined);
 
       const path = await service.takeScreenshot("serial-1");
 
       expect(path).toMatch(/screenshot-.*\.png$/);
-      expect(mocks.takeScreenshot).toHaveBeenCalled();
+      expect(client.takeScreenshot).toHaveBeenCalled();
     });
   });
 
   describe("uninstallPackage", () => {
-    it("delegates to adb uninstallPackage", async () => {
-      mocks.uninstallPackage.mockResolvedValue(undefined);
+    it("delegates to client.uninstallPackage", async () => {
+      const client = getMockClient(service);
+      client.uninstallPackage.mockResolvedValue(undefined);
 
       await service.uninstallPackage("serial-1", "com.example.app");
 
-      expect(mocks.uninstallPackage).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(client.uninstallPackage).toHaveBeenCalledWith(
         "serial-1",
         "com.example.app"
       );
@@ -146,13 +150,13 @@ describe("AdbService", () => {
   });
 
   describe("clearAppData", () => {
-    it("delegates to adb clearAppData", async () => {
-      mocks.clearAppData.mockResolvedValue(undefined);
+    it("delegates to client.clearAppData", async () => {
+      const client = getMockClient(service);
+      client.clearAppData.mockResolvedValue(undefined);
 
       await service.clearAppData("serial-1", "com.example.app");
 
-      expect(mocks.clearAppData).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(client.clearAppData).toHaveBeenCalledWith(
         "serial-1",
         "com.example.app"
       );

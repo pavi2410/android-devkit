@@ -13,7 +13,7 @@
     },
     "apps/extension": {
       "name": "android-devkit",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "dependencies": {
         "@android-devkit/adb": "workspace:*",
         "@android-devkit/android-project": "workspace:*",
@@ -53,7 +53,9 @@
       "version": "0.1.0",
       "dependencies": {
         "@android-devkit/android-sdk": "workspace:*",
-        "@android-devkit/tool-core": "workspace:*",
+        "@yume-chan/adb": "^2.5.1",
+        "@yume-chan/adb-server-node-tcp": "^2.5.2",
+        "@yume-chan/stream-extra": "^2.1.0",
       },
       "devDependencies": {
         "@types/node": "^25.0.0",
@@ -540,6 +542,20 @@
     "@vscode/vsce-sign-win32-arm64": ["@vscode/vsce-sign-win32-arm64@2.0.6", "", { "os": "win32", "cpu": "arm64" }, "sha512-ivM/MiGIY0PJNZBoGtlRBM/xDpwbdlCWomUWuLmIxbi1Cxe/1nooYrEQoaHD8ojVRgzdQEUzMsRbyF5cJJgYOg=="],
 
     "@vscode/vsce-sign-win32-x64": ["@vscode/vsce-sign-win32-x64@2.0.6", "", { "os": "win32", "cpu": "x64" }, "sha512-mgth9Kvze+u8CruYMmhHw6Zgy3GRX2S+Ed5oSokDEK5vPEwGGKnmuXua9tmFhomeAnhgJnL4DCna3TiNuGrBTQ=="],
+
+    "@yume-chan/adb": ["@yume-chan/adb@2.5.1", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/event": "^2.0.0", "@yume-chan/no-data-view": "^2.0.0", "@yume-chan/stream-extra": "^2.1.0", "@yume-chan/struct": "^2.3.2" } }, "sha512-Nm9ZA0cOxfINE+BlZ7whgqjtoLpaZg1xcV8e0C7YbpG/KOHnQGseGTwbfqJFR6xdqbRvvrNL4jIGGpxvn31ykw=="],
+
+    "@yume-chan/adb-server-node-tcp": ["@yume-chan/adb-server-node-tcp@2.5.2", "", { "dependencies": { "@yume-chan/adb": "^2.5.1", "@yume-chan/async": "^4.1.3", "@yume-chan/stream-extra": "^2.1.0", "@yume-chan/struct": "^2.3.2" } }, "sha512-ga9icFBRUk1n6lO+ymlj83qE+90kMLV8sQA3w9mZAisfdxxEEIq1cvXitFQJvDgL0NuFQruVI4JoZA/wrgpKOw=="],
+
+    "@yume-chan/async": ["@yume-chan/async@4.1.3", "", {}, "sha512-0vzhNJMkWUPyjKzUK4rqHEeCU6YQtF78RsB1kFRB6Y2BLupmEQNxcSb0mjKabPL9jZpCCiLa5KL8oTOJClUVaw=="],
+
+    "@yume-chan/event": ["@yume-chan/event@2.0.0", "", { "dependencies": { "@yume-chan/async": "^4.0.2" } }, "sha512-z56MDOcX1QlgLUCuA6th3r10negVb7A3gzY//TwSC9ZOvzuRlrAqXcxZf1T3hHfNMk/NFO9RIgQgegXYSfaqLw=="],
+
+    "@yume-chan/no-data-view": ["@yume-chan/no-data-view@2.0.0", "", {}, "sha512-0GRJrrt6wtZlbiE92jocHOnaAvjQ+Y7xwwhwOPqLkwf90Kj1JIHJ5Zh4wJVQSQIkzfRSOpM+jeEQdC2K15snlA=="],
+
+    "@yume-chan/stream-extra": ["@yume-chan/stream-extra@2.1.0", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/struct": "^2.0.1" } }, "sha512-Sq1mDCLTIOu+TbI3VmFhcKL5hi+qZkDA3S+JezZb/AJm4ESC3hB7+LgQIQs3QEK/ZeRwMg37w4IOYHSh30R7BQ=="],
+
+    "@yume-chan/struct": ["@yume-chan/struct@2.3.2", "", { "dependencies": { "@yume-chan/async": "^4.1.3", "@yume-chan/no-data-view": "^2.0.0" } }, "sha512-afoCnSKV+5HRK7e4innVd9YTYDyNWdjA1CVQa1j8rWYnmr7HGZfdkHMQr+AESLk6GxWFMzOIPQIG6nYOTGMFIw=="],
 
     "agent-base": ["agent-base@7.1.4", "", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 

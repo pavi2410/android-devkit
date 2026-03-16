@@ -1,36 +1,32 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { adbMocks, MockAdbClient, FakeStream } = vi.hoisted(() => {
-  const adbMocks = {
-    getDevices: vi.fn(),
-    getDeviceName: vi.fn(),
-    getApiLevel: vi.fn(),
-    getAndroidVersion: vi.fn(),
-    takeScreenshot: vi.fn(),
-    reboot: vi.fn(),
-    installApk: vi.fn(),
-    uninstallPackage: vi.fn(),
-    clearAppData: vi.fn(),
-    launchApp: vi.fn(),
-    forceStopApp: vi.fn(),
-    pairDevice: vi.fn(),
-    listMdnsServices: vi.fn(),
-    isMdnsSupported: vi.fn(),
-    enableTcpip: vi.fn(),
-    listPackages: vi.fn(),
-    getPidForPackage: vi.fn(),
-    listFiles: vi.fn(),
-    pullFile: vi.fn(),
-    pushFile: vi.fn(),
-    deleteFile: vi.fn(),
-    resolveAdbPath: vi.fn().mockReturnValue("/usr/bin/adb"),
-  };
-
+const { MockAdbClient, FakeStream } = vi.hoisted(() => {
   class MockAdbClient {
-    exec = vi.fn();
-    shell = vi.fn();
+    getDevices = vi.fn();
+    getDeviceName = vi.fn();
+    getApiLevel = vi.fn();
+    getAndroidVersion = vi.fn();
+    takeScreenshot = vi.fn();
+    reboot = vi.fn();
+    installApk = vi.fn();
+    uninstallPackage = vi.fn();
+    clearAppData = vi.fn();
+    launchApp = vi.fn();
+    forceStopApp = vi.fn();
+    pairDevice = vi.fn();
+    listMdnsServices = vi.fn();
+    isMdnsSupported = vi.fn();
+    enableTcpip = vi.fn();
+    listPackages = vi.fn();
+    getPidForPackage = vi.fn();
+    listFiles = vi.fn();
+    pullFile = vi.fn();
+    pushFile = vi.fn();
+    deleteFile = vi.fn();
     connect = vi.fn().mockResolvedValue("connected");
     disconnect = vi.fn().mockResolvedValue("disconnected");
+    dispose = vi.fn();
+    getAdbPath = vi.fn().mockReturnValue("/usr/bin/adb");
     constructor(_opts?: any) {}
   }
 
@@ -47,11 +43,11 @@ const { adbMocks, MockAdbClient, FakeStream } = vi.hoisted(() => {
     stop() { this.isRunning = false; }
   }
 
-  return { adbMocks, MockAdbClient, FakeStream };
+  return { MockAdbClient, FakeStream };
 });
 
 vi.mock("@android-devkit/adb", () => ({
-  ...adbMocks,
+  resolveAdbPath: vi.fn().mockReturnValue("/usr/bin/adb"),
   AdbClient: MockAdbClient,
 }));
 

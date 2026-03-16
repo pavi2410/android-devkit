@@ -13,11 +13,6 @@ export type DeviceState =
   | "unknown";
 
 /**
- * Device transport type
- */
-export type TransportType = "usb" | "local" | "any";
-
-/**
  * How the device is connected
  */
 export type ConnectionType = "usb" | "emulator" | "tcpip" | "wireless";
@@ -36,8 +31,8 @@ export interface Device {
   product?: string;
   /** Device name */
   device?: string;
-  /** Transport ID */
-  transportId?: string;
+  /** Transport ID from ADB server */
+  transportId: bigint;
   /** Whether this is an emulator */
   isEmulator: boolean;
   /** How the device is connected */
@@ -45,17 +40,17 @@ export interface Device {
 }
 
 /**
- * Options for running ADB commands
+ * Options for creating an AdbClient
  */
-export interface AdbOptions {
-  /** Path to ADB binary (defaults to "adb" in PATH) */
+export interface AdbClientOptions {
+  /** Path to ADB binary (for server start and fallback operations) */
   adbPath?: string;
   /** Android SDK root used to auto-resolve ADB from platform-tools */
   sdkPath?: string;
-  /** Target device serial (uses -s flag) */
-  serial?: string;
-  /** Command timeout in milliseconds */
-  timeout?: number;
+  /** ADB server host (defaults to "127.0.0.1") */
+  serverHost?: string;
+  /** ADB server port (defaults to 5037) */
+  serverPort?: number;
 }
 
 /**
@@ -64,16 +59,4 @@ export interface AdbOptions {
 export interface ResolveAdbPathOptions {
   adbPath?: string;
   sdkPath?: string;
-}
-
-/**
- * Result of an ADB command execution
- */
-export interface AdbResult {
-  /** Exit code */
-  exitCode: number;
-  /** Standard output */
-  stdout: string;
-  /** Standard error */
-  stderr: string;
 }

@@ -21,7 +21,9 @@
   },
   "dependencies": {
     "@android-devkit/android-sdk": "workspace:*",
-    "@android-devkit/tool-core": "workspace:*"
+    "@yume-chan/adb": "^2.5.1",
+    "@yume-chan/adb-server-node-tcp": "^2.5.2",
+    "@yume-chan/stream-extra": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.0"
