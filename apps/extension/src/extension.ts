@@ -136,6 +136,10 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     logcatService,
+    logcatProvider,
+    devicesProvider,
+    fileExplorerProvider,
+    gradleTasksProvider,
     buildRunProvider,
     projectLayoutProvider,
     avdManagerProvider,

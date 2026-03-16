@@ -462,29 +462,29 @@
           "group": "navigation"
         },
         {
-          "command": "androidDevkit.clearLogcat",
-          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
-          "group": "navigation"
-        },
-        {
-          "command": "androidDevkit.showLogcatOutput",
-          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
-          "group": "navigation"
-        },
-        {
           "command": "androidDevkit.setLogcatFilter",
           "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
-          "group": "navigation"
+          "group": "1_filters"
         },
         {
           "command": "androidDevkit.setLogcatPackageFilter",
           "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
-          "group": "navigation"
+          "group": "1_filters"
+        },
+        {
+          "command": "androidDevkit.showLogcatOutput",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
+          "group": "2_output"
+        },
+        {
+          "command": "androidDevkit.clearLogcat",
+          "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
+          "group": "2_output"
         },
         {
           "command": "androidDevkit.exportLogcat",
           "when": "view == androidDevkit.logcat && androidDevkit.hasDevices",
-          "group": "navigation"
+          "group": "2_output"
         },
         {
           "command": "androidDevkit.refreshFileExplorer",
@@ -679,6 +679,11 @@
           "default": 1e4,
           "description": "Maximum number of Logcat lines to keep in memory before older entries are discarded."
         }
+      }
+    },
+    "configurationDefaults": {
+      "[Log (ADK: Logcat)]": {
+        "editor.wordWrap": "off"
       }
     },
     "walkthroughs": [

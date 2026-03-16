@@ -30,6 +30,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private maxEntries: number;
   private filter?: string;
   private hasAvailableDevices = false;
+  private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private session: LogcatSessionOptions;
   private sessionState: LogcatSessionState = "stopped";
 
@@ -62,6 +63,14 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
 
   refresh(): void {
     this._onDidChangeTreeData.fire();
+  }
+
+  private scheduleRefresh(): void {
+    if (this.refreshTimer) return;
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = undefined;
+      this.refresh();
+    }, 500);
   }
 
   getTreeItem(element: LogcatTreeItem): vscode.TreeItem {
@@ -145,7 +154,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
 
     // Write to output channel
     this.writeToOutput(entry);
-    this.refresh();
+    this.scheduleRefresh();
   }
 
   /**
@@ -232,6 +241,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     this.hasAvailableDevices = hasAvailableDevices;
     if (!hasAvailableDevices && this.sessionState !== "stopped") {
       this.stop();
+      vscode.window.showWarningMessage("Logcat stopped: device disconnected.");
       return;
     }
 
@@ -360,6 +370,9 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   }
 
   dispose(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
     this.outputChannel.dispose();
     this._onDidSessionChange.dispose();
     this._onDidChangeTreeData.dispose();

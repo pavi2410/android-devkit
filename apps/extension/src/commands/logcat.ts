@@ -226,9 +226,11 @@ export function registerLogcatCommands(
         { placeHolder: "Select minimum log level", title: "Configure Logcat Filters" }
       );
 
-      if (levelChoice) {
-        logcatProvider.setMinLevel(levelChoice.level);
+      if (!levelChoice) {
+        return;
       }
+
+      logcatProvider.setMinLevel(levelChoice.level);
 
       // Ask for text filter
       const textFilter = await vscode.window.showInputBox({
@@ -337,7 +339,7 @@ export function registerLogcatCommands(
       if (!uri) return;
 
       const { LogcatTreeProvider } = await import("../views/logcat");
-      const content = entries.map((e) => LogcatTreeProvider.formatEntry(e)).join("\n");
+      const content = entries.map((e) => LogcatTreeProvider.formatEntry(e)).join("\n") + "\n";
       await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
       vscode.window.showInformationMessage(`Exported ${entries.length} entries to ${uri.fsPath}`);
     })
