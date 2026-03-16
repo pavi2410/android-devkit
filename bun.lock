@@ -5,9 +5,9 @@
     "": {
       "name": "android-devkit",
       "devDependencies": {
-        "@types/node": "^25.3.3",
+        "@types/node": "catalog:",
         "oxlint": "^1.51.0",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
         "vitest": "^4.0.18",
       },
     },
@@ -44,7 +44,7 @@
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^5.1.4",
         "tailwindcss": "^4.2.1",
-        "typescript": "^5.9.3",
+        "typescript": "catalog:",
         "vite": "^7.3.1",
       },
     },
@@ -53,27 +53,27 @@
       "version": "0.1.0",
       "dependencies": {
         "@android-devkit/android-sdk": "workspace:*",
-        "@yume-chan/adb": "^2.5.1",
-        "@yume-chan/adb-server-node-tcp": "^2.5.2",
-        "@yume-chan/android-bin": "^2.1.0",
-        "@yume-chan/stream-extra": "^2.1.0",
+        "@yume-chan/adb": "catalog:",
+        "@yume-chan/adb-server-node-tcp": "catalog:",
+        "@yume-chan/android-bin": "catalog:",
+        "@yume-chan/stream-extra": "catalog:",
       },
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/android-project": {
       "name": "@android-devkit/android-project",
       "version": "0.1.0",
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/android-sdk": {
       "name": "@android-devkit/android-sdk",
       "version": "0.1.0",
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/avdmanager": {
@@ -84,7 +84,7 @@
         "@android-devkit/tool-core": "workspace:*",
       },
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/emulator": {
@@ -95,7 +95,7 @@
         "@android-devkit/tool-core": "workspace:*",
       },
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/gradle": {
@@ -105,18 +105,18 @@
         "@android-devkit/tool-core": "workspace:*",
       },
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/logcat": {
       "name": "@android-devkit/logcat",
       "version": "0.1.0",
       "dependencies": {
-        "@yume-chan/android-bin": "^2.1.0",
-        "@yume-chan/stream-extra": "^2.1.0",
+        "@yume-chan/android-bin": "catalog:",
+        "@yume-chan/stream-extra": "catalog:",
       },
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/sdkmanager": {
@@ -127,16 +127,24 @@
         "@android-devkit/tool-core": "workspace:*",
       },
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
     "packages/tool-core": {
       "name": "@android-devkit/tool-core",
       "version": "0.1.0",
       "devDependencies": {
-        "@types/node": "^25.0.0",
+        "@types/node": "catalog:",
       },
     },
+  },
+  "catalog": {
+    "@types/node": "^25.0.0",
+    "@yume-chan/adb": "^2.5.1",
+    "@yume-chan/adb-server-node-tcp": "^2.5.2",
+    "@yume-chan/android-bin": "^2.1.0",
+    "@yume-chan/stream-extra": "^2.1.0",
+    "typescript": "^5.9.3",
   },
   "packages": {
     "@android-devkit/adb": ["@android-devkit/adb@workspace:packages/adb"],

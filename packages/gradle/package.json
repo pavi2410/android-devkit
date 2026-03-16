@@ -22,7 +22,7 @@
     "@android-devkit/tool-core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.0.0"
+    "@types/node": "catalog:"
   },
   "files": ["dist"]
 }

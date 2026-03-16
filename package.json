@@ -1,6 +1,14 @@
 {
   "name": "android-devkit",
   "private": true,
+  "catalog": {
+    "@types/node": "^25.0.0",
+    "@yume-chan/adb": "^2.5.1",
+    "@yume-chan/adb-server-node-tcp": "^2.5.2",
+    "@yume-chan/android-bin": "^2.1.0",
+    "@yume-chan/stream-extra": "^2.1.0",
+    "typescript": "^5.9.3"
+  },
   "scripts": {
     "build": "bun run --filter '*' build",
     "build:packages": "bun run --filter './packages/*' build",
@@ -17,9 +25,9 @@
     "apps/*"
   ],
   "devDependencies": {
-    "@types/node": "^25.3.3",
+    "@types/node": "catalog:",
     "oxlint": "^1.51.0",
-    "typescript": "^5.9.3",
+    "typescript": "catalog:",
     "vitest": "^4.0.18"
   }
 }
