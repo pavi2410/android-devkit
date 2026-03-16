@@ -17,7 +17,7 @@ import type {
   ResolveAdbPathOptions,
 } from "./types.js";
 
-export type ScrcpyClient = AdbScrcpyClient<AdbScrcpyOptions3_3_1<true>>;
+export type LocalAdbScrcpyClient = AdbScrcpyClient<AdbScrcpyOptions3_3_1<true>>;
 
 /**
  * Collect a ReadableStream<Uint8Array> into a string.
@@ -950,7 +950,7 @@ export class AdbClient {
       videoBitRate?: number;
       maxFps?: number;
     } = {},
-  ): Promise<ScrcpyClient> {
+  ): Promise<LocalAdbScrcpyClient> {
     const adb = await this.getAdb(serial);
     const scrcpyOptions = new AdbScrcpyOptions3_3_1<true>({
       video: true,

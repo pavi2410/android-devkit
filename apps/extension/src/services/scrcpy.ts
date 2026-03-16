@@ -1,14 +1,20 @@
 import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ScrcpyClient } from "@android-devkit/adb";
+import {
+  type LocalAdbScrcpyClient,
+  type AndroidMotionEventAction,
+  type AndroidKeyEventAction,
+  type AndroidKeyCode,
+  AndroidKeyEventMeta,
+} from "@android-devkit/adb";
 import type { AdbService } from "./adb";
 
 const SCRCPY_SERVER_VERSION = "v3.3.1";
 const SCRCPY_SERVER_FILENAME = `scrcpy-server-${SCRCPY_SERVER_VERSION}`;
 
 interface ScrcpySession {
-  client: ScrcpyClient;
+  client: LocalAdbScrcpyClient;
   panel: vscode.WebviewPanel;
   disposed: boolean;
 }
@@ -66,7 +72,7 @@ export class ScrcpyService implements vscode.Disposable {
     });
   }
 
-  private async pipeVideoToWebview(serial: string, session: ScrcpySession): Promise<void> {
+  private async pipeVideoToWebview(_serial: string, session: ScrcpySession): Promise<void> {
     const videoStream = await session.client.videoStream;
     if (!videoStream) {
       session.panel.webview.postMessage({
@@ -91,6 +97,8 @@ export class ScrcpyService implements vscode.Disposable {
         const { done, value } = await reader.read();
         if (done) break;
 
+        if (value.type === "configuration") continue;
+
         // Send packet as base64 to webview (postMessage serializes as JSON)
         const base64 = Buffer.from(value.data).toString("base64");
         session.panel.webview.postMessage({
@@ -109,32 +117,25 @@ export class ScrcpyService implements vscode.Disposable {
     const session = this.sessions.get(serial);
     if (!session || session.disposed || !session.client.controller) return;
 
-    const message = msg as {
-      type: string;
-      action?: number;
-      x?: number;
-      y?: number;
-      pointerId?: number;
-      screenWidth?: number;
-      screenHeight?: number;
-      pressure?: number;
-      keyCode?: number;
-      metaState?: number;
-      text?: string;
-      deltaX?: number;
-      deltaY?: number;
-      content?: string;
-    };
+    type WebviewMessage =
+      | { type: "touch"; action: AndroidMotionEventAction; x: number; y: number; pointerId?: number; screenWidth: number; screenHeight: number; pressure?: number }
+      | { type: "key"; action: AndroidKeyEventAction; keyCode: AndroidKeyCode; metaState?: AndroidKeyEventMeta }
+      | { type: "text"; text: string }
+      | { type: "scroll"; x: number; y: number; screenWidth: number; screenHeight: number; deltaX?: number; deltaY?: number }
+      | { type: "clipboard"; content: string }
+      | { type: "rotate" };
+
+    const message = msg as WebviewMessage;
 
     switch (message.type) {
       case "touch":
         session.client.controller.injectTouch({
-          action: message.action!,
+          action: message.action,
           pointerId: BigInt(message.pointerId ?? 0),
-          pointerX: message.x!,
-          pointerY: message.y!,
-          screenWidth: message.screenWidth!,
-          screenHeight: message.screenHeight!,
+          pointerX: message.x,
+          pointerY: message.y,
+          videoWidth: message.screenWidth,
+          videoHeight: message.screenHeight,
           pressure: message.pressure ?? 1.0,
           actionButton: 0,
           buttons: 0,
@@ -143,25 +144,23 @@ export class ScrcpyService implements vscode.Disposable {
 
       case "key":
         session.client.controller.injectKeyCode({
-          action: message.action!,
-          keyCode: message.keyCode!,
+          action: message.action,
+          keyCode: message.keyCode,
           repeat: 0,
-          metaState: message.metaState ?? 0,
+          metaState: message.metaState ?? AndroidKeyEventMeta.None,
         });
         break;
 
       case "text":
-        if (message.text) {
-          session.client.controller.injectText(message.text);
-        }
+        session.client.controller.injectText(message.text);
         break;
 
       case "scroll":
         session.client.controller.injectScroll({
-          pointerX: message.x!,
-          pointerY: message.y!,
-          screenWidth: message.screenWidth!,
-          screenHeight: message.screenHeight!,
+          pointerX: message.x,
+          pointerY: message.y,
+          videoWidth: message.screenWidth,
+          videoHeight: message.screenHeight,
           scrollX: message.deltaX ?? 0,
           scrollY: message.deltaY ?? 0,
           buttons: 0,
@@ -169,13 +168,11 @@ export class ScrcpyService implements vscode.Disposable {
         break;
 
       case "clipboard":
-        if (message.content) {
-          session.client.controller.setClipboard({
-            content: message.content,
-            paste: true,
-            sequence: 0n,
-          });
-        }
+        session.client.controller.setClipboard({
+          content: message.content,
+          paste: true,
+          sequence: 0n,
+        });
         break;
 
       case "rotate":
