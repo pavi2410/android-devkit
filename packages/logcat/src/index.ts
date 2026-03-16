@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
-import type { ChildProcess } from "node:child_process";
-import { spawnCommand } from "@android-devkit/tool-core";
+import { Logcat, AndroidLogPriority, type AndroidLogEntry } from "@yume-chan/android-bin";
+import type { ReadableStream } from "@yume-chan/stream-extra";
 import type { LogcatEntry, LogLevel, LogcatOptions } from "./types.js";
 
 export type { LogcatEntry, LogLevel, LogcatOptions } from "./types.js";
@@ -15,105 +15,93 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   S: 6,
 };
 
-function parseLogcatLine(line: string): LogcatEntry | null {
-  const regex = /^(\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEFS])\s+([^:]+?)\s*:\s*(.*)$/;
-  const match = line.match(regex);
-  if (!match) return null;
+const PRIORITY_TO_LEVEL: Record<number, LogLevel> = {
+  [AndroidLogPriority.Verbose]: "V",
+  [AndroidLogPriority.Debug]: "D",
+  [AndroidLogPriority.Info]: "I",
+  [AndroidLogPriority.Warn]: "W",
+  [AndroidLogPriority.Error]: "E",
+  [AndroidLogPriority.Fatal]: "F",
+  [AndroidLogPriority.Silent]: "S",
+};
 
-  const [, date, time, pid, tid, level, tag, message] = match;
-  const currentYear = new Date().getFullYear();
-  const timestamp = new Date(`${currentYear}-${date}T${time}`);
+const NANOSECONDS_PER_MILLISECOND = BigInt(1e6);
 
+function toLogcatEntry(entry: AndroidLogEntry): LogcatEntry {
+  const timestampMs = Number(entry.timestamp / NANOSECONDS_PER_MILLISECOND);
   return {
-    timestamp,
-    pid: parseInt(pid, 10),
-    tid: parseInt(tid, 10),
-    level: level as LogLevel,
-    tag: tag.trim(),
-    message,
+    timestamp: new Date(timestampMs),
+    pid: entry.pid,
+    tid: entry.tid,
+    level: PRIORITY_TO_LEVEL[entry.priority] ?? "V",
+    tag: entry.tag,
+    message: entry.message,
   };
 }
 
 export class LogcatStream extends EventEmitter {
-  private proc: ChildProcess | null = null;
-  private readonly adbPath: string;
-  private readonly serial?: string;
+  private stream: ReadableStream<AndroidLogEntry> | null = null;
+  private running = false;
+  private readonly logcat: Logcat;
   private readonly minLevel: LogLevel;
   private readonly pid?: number;
-  private readonly tags: string[];
-  private buffer = "";
 
-  constructor(options: LogcatOptions = {}) {
+  constructor(logcat: Logcat, options: LogcatOptions = {}) {
     super();
-    this.adbPath = options.adbPath ?? "adb";
-    this.serial = options.serial;
+    this.logcat = logcat;
     this.minLevel = options.minLevel ?? "V";
     this.pid = options.pid;
-    this.tags = options.tags ?? [];
   }
 
   start(): void {
-    if (this.proc) throw new Error("Logcat stream already running");
+    if (this.running) throw new Error("Logcat stream already running");
+    this.running = true;
 
-    const args: string[] = [];
-    if (this.serial) args.push("-s", this.serial);
-    args.push("logcat", "-v", "threadtime");
-    if (this.pid) args.push(`--pid=${this.pid}`);
-
-    if (this.tags.length > 0) {
-      for (const tag of this.tags) {
-        args.push(`${tag}:${this.minLevel}`);
-      }
-      args.push("*:S");
-    } else {
-      args.push(`*:${this.minLevel}`);
-    }
-
-    const proc = spawnCommand({ command: this.adbPath, args });
-    this.proc = proc;
-
-    proc.stdout?.on("data", (data: Buffer | string) => {
-      this.handleData(data.toString());
-    });
-
-    proc.stderr?.on("data", (data: Buffer | string) => {
-      this.emit("error", new Error(data.toString()));
-    });
-
-    proc.on("close", (code: number | null) => {
-      this.proc = null;
-      this.emit("close", code);
-    });
-
-    proc.on("error", (error: Error) => {
-      this.emit("error", error);
+    this.stream = this.logcat.binary({
+      pid: this.pid,
     });
 
     this.emit("start");
+    this.readLoop();
+  }
+
+  private async readLoop(): Promise<void> {
+    const stream = this.stream;
+    if (!stream) return;
+
+    const reader = stream.getReader();
+    try {
+      while (this.running) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          const entry = toLogcatEntry(value);
+          if (this.shouldEmit(entry)) {
+            this.emit("entry", entry);
+          }
+        }
+      }
+    } catch (err) {
+      if (this.running) {
+        this.emit("error", err instanceof Error ? err : new Error(String(err)));
+      }
+    } finally {
+      reader.releaseLock();
+      this.running = false;
+      this.stream = null;
+      this.emit("close", 0);
+    }
   }
 
   stop(): void {
-    if (!this.proc) return;
-    this.proc.kill("SIGTERM");
-    this.proc = null;
+    if (!this.running) return;
+    this.running = false;
+    this.stream?.cancel().catch(() => {});
+    this.stream = null;
   }
 
   get isRunning(): boolean {
-    return this.proc !== null;
-  }
-
-  private handleData(data: string): void {
-    this.buffer += data;
-    const lines = this.buffer.split("\n");
-    this.buffer = lines.pop() ?? "";
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const entry = parseLogcatLine(line);
-      if (entry && this.shouldEmit(entry)) {
-        this.emit("entry", entry);
-      }
-    }
+    return this.running;
   }
 
   private shouldEmit(entry: LogcatEntry): boolean {
@@ -121,33 +109,24 @@ export class LogcatStream extends EventEmitter {
   }
 }
 
-export async function clearLogcat(adbPath: string = "adb", serial?: string): Promise<void> {
-  const proc = spawnCommand({
-    command: adbPath,
-    args: serial ? ["-s", serial, "logcat", "-c"] : ["logcat", "-c"],
-  });
-
-  await new Promise<void>((resolve, reject) => {
-    proc.on("close", (code: number | null) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Failed to clear logcat (exit code ${code})`));
-    });
-    proc.on("error", reject);
-  });
+export async function clearLogcat(logcat: Logcat): Promise<void> {
+  await logcat.clear();
 }
 
-export async function getLogcat(adbPath: string = "adb", serial?: string, lines: number = 1000): Promise<string> {
-  const proc = spawnCommand({
-    command: adbPath,
-    args: serial ? ["-s", serial, "logcat", "-d", "-t", lines.toString()] : ["logcat", "-d", "-t", lines.toString()],
-  });
+export async function getLogcat(logcat: Logcat, lines: number = 1000): Promise<LogcatEntry[]> {
+  const stream = logcat.binary({ dump: true, tail: lines });
+  const reader = stream.getReader();
+  const entries: LogcatEntry[] = [];
 
-  return await new Promise<string>((resolve, reject) => {
-    let output = "";
-    proc.stdout?.on("data", (data: Buffer | string) => {
-      output += data.toString();
-    });
-    proc.on("close", () => resolve(output));
-    proc.on("error", reject);
-  });
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      entries.push(toLogcatEntry(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return entries;
 }

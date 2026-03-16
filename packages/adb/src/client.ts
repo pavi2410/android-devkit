@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
-import { AdbServerClient, type Adb } from "@yume-chan/adb";
+import { Readable } from "node:stream";
+import { AdbServerClient, LinuxFileType, type Adb } from "@yume-chan/adb";
 import { AdbServerNodeTcpConnector } from "@yume-chan/adb-server-node-tcp";
+import { Logcat, PackageManager } from "@yume-chan/android-bin";
 import type { ReadableStream } from "@yume-chan/stream-extra";
 import { resolvePlatformToolPath } from "@android-devkit/android-sdk";
 import type {
@@ -63,6 +65,45 @@ function detectConnectionType(serial: string): ConnectionType {
 /** Escape a value for use inside single quotes in an Android shell command. */
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * Format a LinuxFileType + permission bits into a standard `ls -la` style
+ * permissions string (e.g., "drwxr-xr-x").
+ */
+function formatPermissions(fileType: number, perm: number): string {
+  const typeChar =
+    fileType === LinuxFileType.Directory
+      ? "d"
+      : fileType === LinuxFileType.Link
+        ? "l"
+        : "-";
+
+  const bits = [
+    perm & 0o400 ? "r" : "-",
+    perm & 0o200 ? "w" : "-",
+    perm & 0o100 ? "x" : "-",
+    perm & 0o040 ? "r" : "-",
+    perm & 0o020 ? "w" : "-",
+    perm & 0o010 ? "x" : "-",
+    perm & 0o004 ? "r" : "-",
+    perm & 0o002 ? "w" : "-",
+    perm & 0o001 ? "x" : "-",
+  ];
+
+  return typeChar + bits.join("");
+}
+
+/**
+ * Format a Date as "YYYY-MM-DD HH:MM" to match our existing interface.
+ */
+function formatDate(date: Date): string {
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const h = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${y}-${mo}-${d} ${h}:${mi}`;
 }
 
 /**
@@ -419,10 +460,8 @@ export class AdbClient {
    * Get Android API level.
    */
   async getApiLevel(serial: string): Promise<number> {
-    const output = await this.shell(
-      serial,
-      "getprop ro.build.version.sdk",
-    );
+    const adb = await this.getAdb(serial);
+    const output = await adb.getProp("ro.build.version.sdk");
     const level = parseInt(output.trim(), 10);
     return isNaN(level) ? 0 : level;
   }
@@ -431,11 +470,8 @@ export class AdbClient {
    * Get Android version string (e.g., "14").
    */
   async getAndroidVersion(serial: string): Promise<string> {
-    const output = await this.shell(
-      serial,
-      "getprop ro.build.version.release",
-    );
-    return output.trim();
+    const adb = await this.getAdb(serial);
+    return (await adb.getProp("ro.build.version.release")).trim();
   }
 
   /**
@@ -468,24 +504,21 @@ export class AdbClient {
   }
 
   /**
-   * Install an APK on the device (CLI fallback).
+   * Install an APK on the device via streaming install.
    */
   async installApk(
     serial: string,
     apkPath: string,
     options: { replace?: boolean; allowDowngrade?: boolean } = {},
   ): Promise<void> {
-    const args = ["-s", serial, "install"];
-    if (options.replace) args.push("-r");
-    if (options.allowDowngrade) args.push("-d");
-    args.push(apkPath);
-
-    const result = await this.execCli(args, { timeout: 120000 });
-    if (!result.stdout.includes("Success")) {
-      throw new Error(
-        `Failed to install APK: ${result.stdout} ${result.stderr}`,
-      );
-    }
+    const adb = await this.getAdb(serial);
+    const pm = new PackageManager(adb);
+    const stat = fs.statSync(apkPath);
+    const nodeStream = fs.createReadStream(apkPath);
+    const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+    await pm.installStream(stat.size, webStream, {
+      requestDowngrade: options.allowDowngrade,
+    });
   }
 
   /**
@@ -496,13 +529,9 @@ export class AdbClient {
     packageName: string,
     keepData: boolean = false,
   ): Promise<void> {
-    const cmd = keepData
-      ? `pm uninstall -k ${shellQuote(packageName)}`
-      : `pm uninstall ${shellQuote(packageName)}`;
-    const output = await this.shell(serial, cmd);
-    if (!output.includes("Success")) {
-      throw new Error(`Failed to uninstall package: ${output}`);
-    }
+    const adb = await this.getAdb(serial);
+    const pm = new PackageManager(adb);
+    await pm.uninstall(packageName, { keepData });
   }
 
   /**
@@ -693,82 +722,87 @@ export class AdbClient {
       modifiedDate: string;
     }[]
   > {
-    const output = await this.shell(
-      serial,
-      `ls -la ${shellQuote(remotePath)}`,
-    );
-    const lines = output.split("\n");
-    const files: {
-      name: string;
-      type: "file" | "directory" | "link" | "other";
-      size: number;
-      permissions: string;
-      modifiedDate: string;
-    }[] = [];
+    const adb = await this.getAdb(serial);
+    const sync = await adb.sync();
+    try {
+      const entries = await sync.readdir(remotePath);
+      return entries
+        .filter((e) => e.name !== "." && e.name !== "..")
+        .map((entry) => {
+          let type: "file" | "directory" | "link" | "other" = "other";
+          if (entry.type === LinuxFileType.Directory) type = "directory";
+          else if (entry.type === LinuxFileType.File) type = "file";
+          else if (entry.type === LinuxFileType.Link) type = "link";
 
-    for (const line of lines) {
-      const match = line.match(
-        /^([dlcbps-][rwxsStT-]{9})\s+\d+\s+\S+\s+\S+\s+(\d+)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+(.+)$/,
-      );
-      if (!match) continue;
+          const perm = entry.permission;
+          const permStr = formatPermissions(entry.type, perm);
 
-      const [, permissions, sizeStr, modifiedDate, nameRaw] = match;
-      let name = nameRaw.trim();
+          const mtime = new Date(Number(entry.mtime) * 1000);
+          const modifiedDate = formatDate(mtime);
 
-      if (name === "." || name === "..") continue;
-
-      if (name.includes(" -> ")) {
-        name = name.split(" -> ")[0];
-      }
-
-      let type: "file" | "directory" | "link" | "other" = "other";
-      if (permissions.startsWith("d")) type = "directory";
-      else if (permissions.startsWith("-")) type = "file";
-      else if (permissions.startsWith("l")) type = "link";
-
-      files.push({
-        name,
-        type,
-        size: parseInt(sizeStr, 10),
-        permissions,
-        modifiedDate,
-      });
+          return {
+            name: entry.name,
+            type,
+            size: Number(entry.size),
+            permissions: permStr,
+            modifiedDate,
+          };
+        });
+    } finally {
+      await sync.dispose();
     }
-
-    return files;
   }
 
   /**
-   * Pull a file from device to local path (CLI fallback).
+   * Pull a file from device to local path via sync protocol.
    */
   async pullFile(
     serial: string,
     remotePath: string,
     localPath: string,
   ): Promise<void> {
-    const result = await this.execCli(
-      ["-s", serial, "pull", remotePath, localPath],
-      { timeout: 120000 },
-    );
-    if (result.exitCode !== 0) {
-      throw new Error(`Failed to pull file: ${result.stderr}`);
+    const adb = await this.getAdb(serial);
+    const sync = await adb.sync();
+    try {
+      const stream = sync.read(remotePath);
+      const reader = stream.getReader();
+      const writeStream = fs.createWriteStream(localPath);
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          writeStream.write(value);
+        }
+      } finally {
+        reader.releaseLock();
+        await new Promise<void>((resolve, reject) => {
+          writeStream.end((err: Error | null) => (err ? reject(err) : resolve()));
+        });
+      }
+    } finally {
+      await sync.dispose();
     }
   }
 
   /**
-   * Push a local file to device (CLI fallback).
+   * Push a local file to device via sync protocol.
    */
   async pushFile(
     serial: string,
     localPath: string,
     remotePath: string,
   ): Promise<void> {
-    const result = await this.execCli(
-      ["-s", serial, "push", localPath, remotePath],
-      { timeout: 120000 },
-    );
-    if (result.exitCode !== 0) {
-      throw new Error(`Failed to push file: ${result.stderr}`);
+    const adb = await this.getAdb(serial);
+    const sync = await adb.sync();
+    try {
+      const nodeStream = fs.createReadStream(localPath);
+      const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+      await sync.write({
+        filename: remotePath,
+        file: webStream,
+      });
+    } finally {
+      await sync.dispose();
     }
   }
 
@@ -808,5 +842,22 @@ export class AdbClient {
    */
   getAdbPath(): string {
     return this.adbPath;
+  }
+
+  /**
+   * Create a Logcat instance for a device.
+   * Returns a Tango Logcat object that provides binary() and clear() methods.
+   */
+  async createLogcat(serial: string): Promise<Logcat> {
+    const adb = await this.getAdb(serial);
+    return new Logcat(adb);
+  }
+
+  /**
+   * Create a PackageManager instance for a device.
+   */
+  async createPackageManager(serial: string): Promise<PackageManager> {
+    const adb = await this.getAdb(serial);
+    return new PackageManager(adb);
   }
 }

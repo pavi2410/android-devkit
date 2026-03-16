@@ -10,10 +10,8 @@ export interface LogcatEntry {
 }
 
 export interface LogcatOptions {
-  adbPath?: string;
-  serial?: string;
+  /** Minimum log level to emit */
   minLevel?: LogLevel;
-  tags?: string[];
+  /** Filter by PID */
   pid?: number;
-  clear?: boolean;
 }

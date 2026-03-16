@@ -276,6 +276,11 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
       minLevel: this.session.minLevel,
       pid: this.session.pid,
       serial: this.session.serial,
+    }).catch((err) => {
+      vscode.window.showErrorMessage(`Failed to start logcat: ${err instanceof Error ? err.message : String(err)}`);
+      this.sessionState = "stopped";
+      this.emitSessionChange();
+      this.refresh();
     });
     this.emitSessionChange();
     this.refresh();

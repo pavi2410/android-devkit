@@ -38,9 +38,11 @@ vi.mock("@android-devkit/logcat", () => ({
 
 import { LogcatService } from "../../src/services/logcat";
 
+const fakeLogcatInstance = { binary: vi.fn(), clear: vi.fn() };
+
 function createMockAdbService() {
   return {
-    getAdbPathPublic: vi.fn().mockReturnValue("/usr/bin/adb"),
+    createLogcat: vi.fn().mockResolvedValue(fakeLogcatInstance),
   } as any;
 }
 
@@ -52,8 +54,8 @@ describe("LogcatService", () => {
     service = new LogcatService(createMockAdbService());
   });
 
-  it("start delegates to LogcatStream", () => {
-    service.start({ serial: "emulator-5554", minLevel: "W" });
+  it("start delegates to LogcatStream", async () => {
+    await service.start({ serial: "emulator-5554", minLevel: "W" });
 
     expect(service.isRunning).toBe(true);
     const stream = FakeStream.getCurrent();
@@ -61,39 +63,39 @@ describe("LogcatService", () => {
     expect(stream.isRunning).toBe(true);
   });
 
-  it("stop stops the active stream", () => {
-    service.start();
+  it("stop stops the active stream", async () => {
+    await service.start({ serial: "emulator-5554" });
     service.stop();
 
     expect(service.isRunning).toBe(false);
   });
 
-  it("propagates logcat entries", () => {
+  it("propagates logcat entries", async () => {
     const entries: unknown[] = [];
     service.onLogcatEntry((e) => entries.push(e));
 
-    service.start();
+    await service.start({ serial: "emulator-5554" });
     FakeStream.getCurrent().emit("entry", { tag: "Test", message: "hello" });
 
     expect(entries).toHaveLength(1);
   });
 
-  it("propagates errors", () => {
+  it("propagates errors", async () => {
     const errors: Error[] = [];
     service.onError((e) => errors.push(e));
 
-    service.start();
+    await service.start({ serial: "emulator-5554" });
     FakeStream.getCurrent().emit("error", new Error("stream failed"));
 
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toBe("stream failed");
   });
 
-  it("fires state changes", () => {
+  it("fires state changes", async () => {
     const states: boolean[] = [];
     service.onStateChanged((s) => states.push(s));
 
-    service.start();
+    await service.start({ serial: "emulator-5554" });
     FakeStream.getCurrent().emit("close");
 
     expect(states).toContain(false);
@@ -104,11 +106,11 @@ describe("LogcatService", () => {
 
     await service.clear("emulator-5554");
 
-    expect(clearLogcatMock).toHaveBeenCalledWith("/usr/bin/adb", "emulator-5554");
+    expect(clearLogcatMock).toHaveBeenCalledWith(fakeLogcatInstance);
   });
 
-  it("dispose stops stream and disposes emitters", () => {
-    service.start();
+  it("dispose stops stream and disposes emitters", async () => {
+    await service.start({ serial: "emulator-5554" });
     service.dispose();
 
     expect(service.isRunning).toBe(false);

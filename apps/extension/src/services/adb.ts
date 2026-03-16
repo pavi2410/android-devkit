@@ -278,6 +278,13 @@ export class AdbService {
   }
 
   /**
+   * Create a Logcat instance for a device (delegates to AdbClient).
+   */
+  async createLogcat(serial: string) {
+    return this.client.createLogcat(serial);
+  }
+
+  /**
    * Cleanup resources
    */
   dispose(): void {

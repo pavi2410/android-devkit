@@ -86,9 +86,11 @@ describe("Service disposal", () => {
   });
 
   describe("LogcatService.dispose()", () => {
-    it("stops active stream and disposes all 3 emitters", () => {
-      const service = new LogcatService({ getAdbPathPublic: () => "/usr/bin/adb" } as any);
-      service.start({ serial: "emulator-5554" });
+    it("stops active stream and disposes all 3 emitters", async () => {
+      const service = new LogcatService({
+        createLogcat: vi.fn().mockResolvedValue({ binary: vi.fn(), clear: vi.fn() }),
+      } as any);
+      await service.start({ serial: "emulator-5554" });
 
       expect(service.isRunning).toBe(true);
 
@@ -98,7 +100,9 @@ describe("Service disposal", () => {
     });
 
     it("is safe to call dispose multiple times", () => {
-      const service = new LogcatService({ getAdbPathPublic: () => "/usr/bin/adb" } as any);
+      const service = new LogcatService({
+        createLogcat: vi.fn().mockResolvedValue({ binary: vi.fn(), clear: vi.fn() }),
+      } as any);
 
       expect(() => {
         service.dispose();

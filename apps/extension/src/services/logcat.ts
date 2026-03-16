@@ -23,15 +23,18 @@ export class LogcatService implements vscode.Disposable {
     return this.stream?.isRunning ?? false;
   }
 
-  start(options: Pick<LogcatOptions, "minLevel" | "pid" | "serial" | "tags"> = {}): void {
+  async start(options: LogcatOptions & { serial?: string } = {}): Promise<void> {
     this.stop();
 
-    const stream = new LogcatStream({
-      adbPath: this.adbService.getAdbPathPublic(),
+    if (!options.serial) {
+      throw new Error("Serial is required to start logcat");
+    }
+
+    const logcat = await this.adbService.createLogcat(options.serial);
+
+    const stream = new LogcatStream(logcat, {
       minLevel: options.minLevel,
       pid: options.pid,
-      serial: options.serial,
-      tags: options.tags,
     });
 
     stream.on("entry", (entry: LogcatEntry) => {
@@ -62,7 +65,9 @@ export class LogcatService implements vscode.Disposable {
   }
 
   async clear(serial?: string): Promise<void> {
-    await clearLogcat(this.adbService.getAdbPathPublic(), serial);
+    if (!serial) return;
+    const logcatInstance = await this.adbService.createLogcat(serial);
+    await clearLogcat(logcatInstance);
   }
 
   dispose(): void {

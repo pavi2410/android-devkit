@@ -19,7 +19,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@android-devkit/tool-core": "workspace:*"
+    "@yume-chan/android-bin": "^2.1.0",
+    "@yume-chan/stream-extra": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.0"

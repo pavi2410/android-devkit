@@ -40,11 +40,15 @@ vi.mock("@android-devkit/logcat", () => ({
 import { LogcatTreeProvider } from "../../src/views/logcat";
 import { LogcatService } from "../../src/services/logcat";
 
+const fakeLogcatInstance = { binary: vi.fn(), clear: vi.fn() };
+
 function createMockAdbService() {
   return {
-    getAdbPathPublic: vi.fn().mockReturnValue("/usr/bin/adb"),
+    createLogcat: vi.fn().mockResolvedValue(fakeLogcatInstance),
   } as any;
 }
+
+const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 function makeEntry(overrides: Partial<LogcatEntry> = {}): LogcatEntry {
   return {
@@ -99,8 +103,9 @@ describe("LogcatTreeProvider", () => {
   });
 
   describe("entry filtering", () => {
-    it("filters entries below min level", () => {
+    it("filters entries below min level", async () => {
       provider.start({ serial: "s1", minLevel: "W" });
+      await flushPromises();
 
       const stream = FakeStream.getCurrent();
       stream.emit("entry", makeEntry({ level: "D", message: "debug" }));
@@ -113,8 +118,9 @@ describe("LogcatTreeProvider", () => {
       expect(entries[1].level).toBe("E");
     });
 
-    it("filters by text filter", () => {
+    it("filters by text filter", async () => {
       provider.start({ serial: "s1", minLevel: "V" });
+      await flushPromises();
       provider.setFilter("important");
 
       const stream = FakeStream.getCurrent();
@@ -125,8 +131,9 @@ describe("LogcatTreeProvider", () => {
       expect(provider.getEntries()).toHaveLength(2);
     });
 
-    it("filters by PID", () => {
+    it("filters by PID", async () => {
       provider.start({ serial: "s1", minLevel: "V", pid: 1234 });
+      await flushPromises();
 
       const stream = FakeStream.getCurrent();
       stream.emit("entry", makeEntry({ pid: 1234, message: "correct" }));
@@ -138,9 +145,10 @@ describe("LogcatTreeProvider", () => {
   });
 
   describe("max entries rotation", () => {
-    it("rotates entries when exceeding max", () => {
+    it("rotates entries when exceeding max", async () => {
       (provider as any).maxEntries = 3;
       provider.start({ serial: "s1", minLevel: "V" });
+      await flushPromises();
 
       const stream = FakeStream.getCurrent();
       for (let i = 0; i < 5; i++) {
@@ -191,8 +199,9 @@ describe("LogcatTreeProvider", () => {
   });
 
   describe("getEntries", () => {
-    it("returns readonly array of entries", () => {
+    it("returns readonly array of entries", async () => {
       provider.start({ serial: "s1", minLevel: "V" });
+      await flushPromises();
       FakeStream.getCurrent().emit("entry", makeEntry());
 
       const entries = provider.getEntries();
