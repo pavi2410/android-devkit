@@ -290,6 +290,15 @@ export class AdbClient {
   }
 
   /**
+   * Evict a device's cached Adb transport without closing it.
+   * Use this after scrcpy ends — the scrcpy client already closed its own
+   * sockets, and the shared Adb transport may still be in use (e.g. Logcat).
+   */
+  evictDevice(serial: string): void {
+    this.deviceConnections.delete(serial);
+  }
+
+  /**
    * Invalidate a specific device connection.
    */
   invalidateDevice(serial: string): void {
@@ -914,11 +923,17 @@ export class AdbClient {
 
   /**
    * Create a Logcat instance for a device.
-   * Returns a Tango Logcat object that provides binary() and clear() methods.
+   * Always creates a dedicated (non-cached) Adb transport so that scrcpy's
+   * cache manipulation (delete + recreate) never interferes with logcat.
+   * Returns the Logcat instance along with a dispose callback to close the
+   * underlying transport when logcat finishes.
    */
-  async createLogcat(serial: string): Promise<Logcat> {
-    const adb = await this.getAdb(serial);
-    return new Logcat(adb);
+  async createLogcat(serial: string): Promise<{ logcat: Logcat; dispose: () => void }> {
+    const devices = await this.serverClient.getDevices();
+    const device = devices.find((d) => d.serial === serial);
+    if (!device) throw new Error(`Device not found: ${serial}`);
+    const adb = await this.serverClient.createAdb({ transportId: device.transportId });
+    return { logcat: new Logcat(adb), dispose: () => adb.close() };
   }
 
   /**

@@ -18,7 +18,7 @@ export interface DeviceInfo extends Device {
 export class AdbService {
   private client: AdbClient;
   private _onDevicesChanged = new vscode.EventEmitter<void>();
-  readonly outputChannel = vscode.window.createOutputChannel("ADK: ADB", { log: true });
+  readonly outputChannel = vscode.window.createOutputChannel("ADK: ADB");
 
   readonly onDevicesChanged = this._onDevicesChanged.event;
 
@@ -287,6 +287,8 @@ export class AdbService {
 
   /**
    * Create a Logcat instance for a device (delegates to AdbClient).
+   * Returns a dedicated Logcat instance plus a dispose callback that closes
+   * the underlying Adb transport when logcat is done.
    */
   async createLogcat(serial: string) {
     return this.client.createLogcat(serial);
@@ -304,6 +306,16 @@ export class AdbService {
    */
   async startScrcpy(serial: string, options?: { maxSize?: number; videoBitRate?: number; maxFps?: number }) {
     return this.client.startScrcpy(serial, options);
+  }
+
+  /**
+   * Evict the cached ADB transport for a device without closing it.
+   * Must be called after a scrcpy session closes so subsequent operations
+   * get a fresh connection, without breaking any still-running services
+   * (Logcat, etc.) that hold a reference to the same transport.
+   */
+  evictDevice(serial: string): void {
+    this.client.evictDevice(serial);
   }
 
   /**

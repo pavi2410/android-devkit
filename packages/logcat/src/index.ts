@@ -45,6 +45,9 @@ function toLogcatEntry(entry: AndroidLogEntry): LogcatEntry {
 
 export class LogcatStream extends EventEmitter {
   private stream: ReadableStream<AndroidLogEntry> | null = null;
+  // Store the active reader so stop() can cancel it — cancelling a locked
+  // ReadableStream directly throws, but reader.cancel() works correctly.
+  private activeReader: ReturnType<ReadableStream<AndroidLogEntry>["getReader"]> | null = null;
   private running = false;
   private readonly logcat: Logcat;
   private readonly minLevel: LogLevel;
@@ -73,7 +76,10 @@ export class LogcatStream extends EventEmitter {
     const stream = this.stream;
     if (!stream) return;
 
+    // getReader() is synchronous — activeReader is set before the first await,
+    // so stop() can safely cancel it as soon as start() returns.
     const reader = stream.getReader();
+    this.activeReader = reader;
     try {
       while (this.running) {
         const { value, done } = await reader.read();
@@ -90,6 +96,7 @@ export class LogcatStream extends EventEmitter {
         this.emit("error", err instanceof Error ? err : new Error(String(err)));
       }
     } finally {
+      this.activeReader = null;
       reader.releaseLock();
       this.running = false;
       this.stream = null;
@@ -100,7 +107,13 @@ export class LogcatStream extends EventEmitter {
   stop(): void {
     if (!this.running) return;
     this.running = false;
-    this.stream?.cancel().catch(() => {});
+    // Cancel via the active reader (the stream is locked to it, so calling
+    // stream.cancel() directly would throw and be silently swallowed).
+    if (this.activeReader) {
+      this.activeReader.cancel().catch(() => {});
+    } else {
+      this.stream?.cancel().catch(() => {});
+    }
     this.stream = null;
   }
 

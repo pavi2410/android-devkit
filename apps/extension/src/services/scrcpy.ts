@@ -268,9 +268,10 @@ export class ScrcpyService implements vscode.Disposable {
       this.outputChannel.debug(`Cleanup error for ${serial} (ignored):`, err);
     }
 
-    // Evict the cached ADB transport so subsequent operations (Logcat, etc.)
-    // get a fresh connection rather than reusing the torn-down scrcpy one.
-    this.adbService.invalidateDevice(serial);
+    // Evict the cached Adb transport from the pool so subsequent getAdb() calls
+    // get a fresh connection. We don't close it — the scrcpy client already closed
+    // its own sockets, and the shared transport may still be in use (e.g. Logcat).
+    this.adbService.evictDevice(serial);
   }
 
   dispose(): void {

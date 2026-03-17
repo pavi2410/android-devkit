@@ -30,7 +30,7 @@ export class LogcatService implements vscode.Disposable {
       throw new Error("Serial is required to start logcat");
     }
 
-    const logcat = await this.adbService.createLogcat(options.serial);
+    const { logcat, dispose } = await this.adbService.createLogcat(options.serial);
 
     const stream = new LogcatStream(logcat, {
       minLevel: options.minLevel,
@@ -41,13 +41,22 @@ export class LogcatService implements vscode.Disposable {
       this.onEntryEmitter.fire(entry);
     });
 
+    // Guard against stale events from a previous stream that outlived its stop():
+    // if start() was called again before the old readLoop finished, these handlers
+    // must not overwrite the new stream reference or emit a spurious "stopped" event.
     stream.on("error", (error: Error) => {
-      this.onErrorEmitter.fire(error);
+      if (this.stream === stream) {
+        this.onErrorEmitter.fire(error);
+      }
     });
 
     stream.on("close", () => {
-      this.stream = null;
-      this.onStateChangedEmitter.fire(false);
+      // Close the dedicated Adb transport now that logcat has finished.
+      dispose();
+      if (this.stream === stream) {
+        this.stream = null;
+        this.onStateChangedEmitter.fire(false);
+      }
     });
 
     this.stream = stream;
@@ -66,8 +75,12 @@ export class LogcatService implements vscode.Disposable {
 
   async clear(serial?: string): Promise<void> {
     if (!serial) return;
-    const logcatInstance = await this.adbService.createLogcat(serial);
-    await clearLogcat(logcatInstance);
+    const { logcat, dispose } = await this.adbService.createLogcat(serial);
+    try {
+      await clearLogcat(logcat);
+    } finally {
+      dispose();
+    }
   }
 
   dispose(): void {
