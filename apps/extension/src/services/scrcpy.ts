@@ -62,6 +62,9 @@ export class ScrcpyService implements vscode.Disposable {
     this.pipeVideoToWebview(serial, session).catch((err) => {
       if (!session.disposed) {
         this.outputChannel.error(`Video stream error for ${serial}:`, err);
+        // Forward error to webview so it shows error state
+        const message = err instanceof Error ? err.message : String(err);
+        session.panel.webview.postMessage({ type: "error", message });
       }
     });
 
@@ -85,24 +88,50 @@ export class ScrcpyService implements vscode.Disposable {
       return;
     }
 
-    this.outputChannel.info(`Video stream started for ${serial}: ${videoStream.metadata.codec} ${videoStream.metadata.width}x${videoStream.metadata.height}`);
+    // Map numeric codec ID to string
+    const codecMap: Record<number, string> = {
+      0x68_32_36_34: "h264",  // ScrcpyVideoCodecId.H264
+      0x68_32_36_35: "h265",  // ScrcpyVideoCodecId.H265
+      0x00_61_76_31: "av1",   // ScrcpyVideoCodecId.AV1
+    };
+    const codec = codecMap[videoStream.metadata.codec] ?? "h264";
+
+    this.outputChannel.info(`Video stream started for ${serial}: codec=${codec} (raw=${videoStream.metadata.codec}) ${videoStream.metadata.width}x${videoStream.metadata.height}`);
 
     // Send metadata
     session.panel.webview.postMessage({
       type: "metadata",
-      codec: videoStream.metadata.codec,
+      codec,
       width: videoStream.metadata.width,
       height: videoStream.metadata.height,
     });
+    this.outputChannel.info(`[${serial}] Sent metadata message to webview`);
 
     // Read and forward video packets
     const reader = videoStream.stream.getReader();
+    let packetCount = 0;
+    let configCount = 0;
     try {
       while (!session.disposed) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          this.outputChannel.info(`[${serial}] Video stream done after ${packetCount} data packets, ${configCount} config packets`);
+          break;
+        }
 
-        if (value.type === "configuration") continue;
+        if (value.type === "configuration") {
+          configCount++;
+          this.outputChannel.info(`[${serial}] Config packet #${configCount}: ${value.data.byteLength} bytes`);
+          // Forward codec config to webview — WebCodecs needs it as the decoder description (SPS/PPS for H264)
+          const configBase64 = Buffer.from(value.data).toString("base64");
+          session.panel.webview.postMessage({ type: "codecConfig", data: configBase64 });
+          continue;
+        }
+
+        packetCount++;
+        if (packetCount <= 5 || packetCount % 100 === 0) {
+          this.outputChannel.info(`[${serial}] Video packet #${packetCount}: keyframe=${value.keyframe} pts=${value.pts} size=${value.data.byteLength}`);
+        }
 
         // Send packet as base64 to webview (postMessage serializes as JSON)
         const base64 = Buffer.from(value.data).toString("base64");

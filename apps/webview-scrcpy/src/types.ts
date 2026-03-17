@@ -1,6 +1,7 @@
 /** Messages from the extension host to the webview */
 export type MessageToWebview =
   | { type: "metadata"; codec: string; width: number; height: number }
+  | { type: "codecConfig"; data: string }  // base64-encoded AVCDecoderConfigurationRecord / codec-specific config
   | { type: "videoPacket"; data: string; keyframe?: boolean; pts?: number }
   | { type: "error"; message: string };
 

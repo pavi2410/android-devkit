@@ -32,22 +32,26 @@ export function App() {
   const [codec, setCodec] = useState("");
   const decoderRef = useRef<VideoDecoder | null>(null);
   const deviceSizeRef = useRef({ width: 0, height: 0 });
+  const codecConfigRef = useRef<Uint8Array | null>(null);
 
   const renderFrame = useCallback((frame: VideoFrame) => {
     const canvas = canvasRef.current;
     if (!canvas) {
+      console.warn("[scrcpy] renderFrame: canvas not mounted");
       frame.close();
       return;
     }
 
     const ctx = canvas.getContext("2d");
     if (!ctx) {
+      console.warn("[scrcpy] renderFrame: could not get 2d context");
       frame.close();
       return;
     }
 
     // Update canvas size to match frame
     if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
+      console.log(`[scrcpy] Resizing canvas: ${canvas.width}x${canvas.height} → ${frame.displayWidth}x${frame.displayHeight}`);
       canvas.width = frame.displayWidth;
       canvas.height = frame.displayHeight;
     }
@@ -61,17 +65,32 @@ export function App() {
       const msg = event.data;
 
       switch (msg.type) {
+        case "codecConfig": {
+          console.log(`[scrcpy] Codec config received: ${msg.data.length} base64 chars (Annex B SPS/PPS, will prepend to keyframes)`);
+          const binaryStr = atob(msg.data);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          codecConfigRef.current = bytes;
+          break;
+        }
+
         case "metadata": {
           setResolution({ width: msg.width, height: msg.height });
           setCodec(msg.codec);
           deviceSizeRef.current = { width: msg.width, height: msg.height };
 
           // Initialize WebCodecs decoder
+          console.log(`[scrcpy] Metadata received: codec=${msg.codec} ${msg.width}x${msg.height}`);
           if (typeof VideoDecoder !== "undefined") {
             const decoder = new VideoDecoder({
-              output: renderFrame,
+              output: (frame) => {
+                console.log(`[scrcpy] Frame decoded: ${frame.displayWidth}x${frame.displayHeight} ts=${frame.timestamp}`);
+                renderFrame(frame);
+              },
               error: (err) => {
-                console.error("Decoder error:", err);
+                console.error("[scrcpy] Decoder error:", err);
                 setStatus("error");
                 setErrorMessage(`Decoder error: ${err.message}`);
               },
@@ -79,17 +98,23 @@ export function App() {
 
             const codecString =
               msg.codec === "h265"
-                ? "hev1.1.6.L93.B0"
+                ? "hev1.1.60.L153.B0.0.0.0.0.0"
+                : msg.codec === "av1"
+                ? "av01.0.05M.08"
                 : "avc1.640028";
 
+            // Annex B mode: no description needed — SPS/PPS is prepended to keyframes in the stream
+            console.log(`[scrcpy] Configuring decoder: codec=${codecString} (Annex B, no description)`);
             decoder.configure({
               codec: codecString,
               optimizeForLatency: true,
             });
+            console.log(`[scrcpy] Decoder state after configure: ${decoder.state}`);
 
             decoderRef.current = decoder;
             setStatus("streaming");
           } else {
+            console.error("[scrcpy] VideoDecoder not available");
             setStatus("error");
             setErrorMessage("WebCodecs API not available in this environment");
           }
@@ -98,13 +123,25 @@ export function App() {
 
         case "videoPacket": {
           const decoder = decoderRef.current;
-          if (!decoder || decoder.state === "closed") return;
+          if (!decoder || decoder.state === "closed") {
+            console.warn(`[scrcpy] Dropping packet — decoder=${decoder ? decoder.state : "null"}`);
+            return;
+          }
 
           // Decode base64 to Uint8Array
           const binaryStr = atob(msg.data);
-          const bytes = new Uint8Array(binaryStr.length);
+          let bytes = new Uint8Array(binaryStr.length);
           for (let i = 0; i < binaryStr.length; i++) {
             bytes[i] = binaryStr.charCodeAt(i);
+          }
+
+          // Annex B: prepend SPS/PPS config to each keyframe so the decoder can reinitialize
+          if (msg.keyframe && codecConfigRef.current) {
+            const combined = new Uint8Array(codecConfigRef.current.byteLength + bytes.byteLength);
+            combined.set(codecConfigRef.current, 0);
+            combined.set(bytes, codecConfigRef.current.byteLength);
+            bytes = combined;
+            console.log(`[scrcpy] Prepended ${codecConfigRef.current.byteLength}B config to keyframe (total ${bytes.byteLength}B)`);
           }
 
           const chunk = new EncodedVideoChunk({
@@ -113,8 +150,11 @@ export function App() {
             data: bytes,
           });
 
+          console.log(`[scrcpy] Decoding chunk: type=${chunk.type} ts=${chunk.timestamp} size=${bytes.byteLength} decoderState=${decoder.state} queueSize=${decoder.decodeQueueSize}`);
           if (decoder.state === "configured") {
             decoder.decode(chunk);
+          } else {
+            console.warn(`[scrcpy] Decoder not in configured state: ${decoder.state}`);
           }
           break;
         }

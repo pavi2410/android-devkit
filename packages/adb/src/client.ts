@@ -951,6 +951,9 @@ export class AdbClient {
       maxFps?: number;
     } = {},
   ): Promise<LocalAdbScrcpyClient> {
+    // Always create a fresh Adb transport for scrcpy — reusing a connection
+    // cached from a previous session causes the video stream to end immediately.
+    this.deviceConnections.delete(serial);
     const adb = await this.getAdb(serial);
     const scrcpyOptions = new AdbScrcpyOptions3_3_1<true>({
       video: true,
@@ -959,7 +962,7 @@ export class AdbClient {
       maxSize: options.maxSize ?? 1920,
       videoBitRate: options.videoBitRate ?? 8_000_000,
       maxFps: options.maxFps ?? 60,
-      tunnelForward: false,
+      tunnelForward: true,  // forward mode is more reliable on emulators (host connects to device)
     });
     return AdbScrcpyClient.start(adb, DefaultServerPath, scrcpyOptions);
   }
