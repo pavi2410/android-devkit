@@ -1,6 +1,6 @@
 # Scrcpy Server Binary
 
-The file `scrcpy-server-v3.3.1` is the scrcpy server JAR pushed to Android devices for screen mirroring.
+The file `scrcpy-server-v3.3.3` is the scrcpy server JAR pushed to Android devices for screen mirroring.
 
 To update the server version:
 1. Download from official scrcpy releases: https://github.com/Genymobile/scrcpy/releases

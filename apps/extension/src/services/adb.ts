@@ -18,6 +18,7 @@ export interface DeviceInfo extends Device {
 export class AdbService {
   private client: AdbClient;
   private _onDevicesChanged = new vscode.EventEmitter<void>();
+  readonly outputChannel = vscode.window.createOutputChannel("ADK: ADB", { log: true });
 
   readonly onDevicesChanged = this._onDevicesChanged.event;
 
@@ -306,10 +307,20 @@ export class AdbService {
   }
 
   /**
+   * Invalidate the cached ADB transport for a device.
+   * Must be called after a scrcpy session closes so subsequent operations
+   * (Logcat, shell commands, etc.) get a fresh connection.
+   */
+  invalidateDevice(serial: string): void {
+    this.client.invalidateDevice(serial);
+  }
+
+  /**
    * Cleanup resources
    */
   dispose(): void {
     this.client.dispose();
     this._onDevicesChanged.dispose();
+    this.outputChannel.dispose();
   }
 }

@@ -10,7 +10,7 @@ import {
 } from "@android-devkit/adb";
 import type { AdbService } from "./adb";
 
-const SCRCPY_SERVER_VERSION = "v3.3.1";
+const SCRCPY_SERVER_VERSION = "v3.3.3";
 const SCRCPY_SERVER_FILENAME = `scrcpy-server-${SCRCPY_SERVER_VERSION}`;
 
 interface ScrcpySession {
@@ -57,6 +57,38 @@ export class ScrcpyService implements vscode.Disposable {
 
     const session: ScrcpySession = { client, panel, disposed: false };
     this.sessions.set(serial, session);
+
+    // Drain ALL readable streams — ADB is a multiplexed protocol; leaving any
+    // stream unread blocks the entire connection (including video).
+    client.clipboard?.pipeTo(new WritableStream()).catch(() => {});
+
+    // Consume the scrcpy server process output (stdout/stderr) and log it.
+    // Not consuming this will fill the ADB I/O buffer and block the connection.
+    void (async () => {
+      const reader = client.output.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value.trim()) {
+            this.outputChannel.info(`[${serial}] scrcpy: ${value.trim()}`);
+          }
+        }
+      } catch {
+        // output stream closed
+      } finally {
+        reader.releaseLock();
+      }
+    })();
+
+    // Clean up session when scrcpy server exits
+    client.exited.then(() => {
+      if (!session.disposed) {
+        this.outputChannel.info(`Scrcpy server exited for ${serial}`);
+        session.disposed = true;
+        this.sessions.delete(serial);
+      }
+    }).catch(() => {});
 
     // Handle video stream
     this.pipeVideoToWebview(serial, session).catch((err) => {
@@ -160,65 +192,66 @@ export class ScrcpyService implements vscode.Disposable {
       | { type: "rotate" };
 
     const message = msg as WebviewMessage;
+    const controller = session.client.controller;
 
-    try {
-      switch (message.type) {
-        case "touch":
-          session.client.controller.injectTouch({
-            action: message.action,
-            pointerId: BigInt(message.pointerId ?? 0),
-            pointerX: message.x,
-            pointerY: message.y,
-            videoWidth: message.screenWidth,
-            videoHeight: message.screenHeight,
-            pressure: message.pressure ?? 1.0,
-            actionButton: 0,
-            buttons: 0,
-          });
-          break;
+    void (async () => {
+      try {
+        switch (message.type) {
+          case "touch":
+            await controller.injectTouch({
+              action: message.action,
+              pointerId: BigInt(message.pointerId ?? 0),
+              pointerX: message.x,
+              pointerY: message.y,
+              videoWidth: message.screenWidth,
+              videoHeight: message.screenHeight,
+              pressure: message.pressure ?? 1.0,
+              actionButton: 0,
+              buttons: 0,
+            });
+            break;
 
-        case "key":
-          session.client.controller.injectKeyCode({
-            action: message.action,
-            keyCode: message.keyCode,
-            repeat: 0,
-            metaState: message.metaState ?? AndroidKeyEventMeta.None,
-          });
-          break;
+          case "key":
+            await controller.injectKeyCode({
+              action: message.action,
+              keyCode: message.keyCode,
+              repeat: 0,
+              metaState: message.metaState ?? AndroidKeyEventMeta.None,
+            });
+            break;
 
-        case "text":
-          session.client.controller.injectText(message.text);
-          break;
+          case "text":
+            await controller.injectText(message.text);
+            break;
 
-        case "scroll":
-          session.client.controller.injectScroll({
-            pointerX: message.x,
-            pointerY: message.y,
-            videoWidth: message.screenWidth,
-            videoHeight: message.screenHeight,
-            scrollX: message.deltaX ?? 0,
-            scrollY: message.deltaY ?? 0,
-            buttons: 0,
-          });
-          break;
+          case "scroll":
+            await controller.injectScroll({
+              pointerX: message.x,
+              pointerY: message.y,
+              videoWidth: message.screenWidth,
+              videoHeight: message.screenHeight,
+              scrollX: message.deltaX ?? 0,
+              scrollY: message.deltaY ?? 0,
+              buttons: 0,
+            });
+            break;
 
-        case "clipboard":
-          session.client.controller.setClipboard({
-            content: message.content,
-            paste: true,
-            sequence: 0n,
-          });
-          break;
+          case "clipboard":
+            await controller.setClipboard({
+              content: message.content,
+              paste: true,
+              sequence: 0n,
+            });
+            break;
 
-        case "rotate":
-          session.client.controller.rotateDevice();
-          break;
+          case "rotate":
+            await controller.rotateDevice();
+            break;
+        }
+      } catch (err) {
+        this.outputChannel.error(`Controller error for ${serial}:`, err);
       }
-    } catch (err) {
-      this.outputChannel.error(`Controller error for ${serial}:`, err);
-      session.disposed = true;
-      void this.stopMirroring(serial);
-    }
+    })();
   }
 
   async stopMirroring(serial: string): Promise<void> {
@@ -234,6 +267,10 @@ export class ScrcpyService implements vscode.Disposable {
     } catch (err) {
       this.outputChannel.debug(`Cleanup error for ${serial} (ignored):`, err);
     }
+
+    // Evict the cached ADB transport so subsequent operations (Logcat, etc.)
+    // get a fresh connection rather than reusing the torn-down scrcpy one.
+    this.adbService.invalidateDevice(serial);
   }
 
   dispose(): void {

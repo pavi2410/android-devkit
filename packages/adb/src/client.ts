@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import { Readable } from "node:stream";
 import { AdbServerClient, LinuxFileType, type Adb } from "@yume-chan/adb";
 import { AdbServerNodeTcpConnector } from "@yume-chan/adb-server-node-tcp";
-import { AdbScrcpyClient, AdbScrcpyOptions3_3_1 } from "@yume-chan/adb-scrcpy";
+import { AdbScrcpyClient, AdbScrcpyOptions3_3_3 } from "@yume-chan/adb-scrcpy";
 import { DefaultServerPath } from "@yume-chan/scrcpy";
 import type { MaybeConsumable } from "@yume-chan/stream-extra";
 import { Logcat, PackageManager } from "@yume-chan/android-bin";
@@ -17,7 +17,7 @@ import type {
   ResolveAdbPathOptions,
 } from "./types.js";
 
-export type LocalAdbScrcpyClient = AdbScrcpyClient<AdbScrcpyOptions3_3_1<true>>;
+export type LocalAdbScrcpyClient = AdbScrcpyClient<AdbScrcpyOptions3_3_3<true>>;
 
 /**
  * Collect a ReadableStream<Uint8Array> into a string.
@@ -955,7 +955,7 @@ export class AdbClient {
     // cached from a previous session causes the video stream to end immediately.
     this.deviceConnections.delete(serial);
     const adb = await this.getAdb(serial);
-    const scrcpyOptions = new AdbScrcpyOptions3_3_1<true>({
+    const scrcpyOptions = new AdbScrcpyOptions3_3_3<true>({
       video: true,
       audio: false,
       control: true,
