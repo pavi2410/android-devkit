@@ -47,9 +47,12 @@ This matrix tracks Android DevKit features, user-facing UX surfaces, implementat
 | Status Bar | Active target device | Left status bar | `androidDevkit.selectRunTarget` | Polishing | Unreleased | Visible workspace context item. |
 | Status Bar | Active build variant | Left status bar | `androidDevkit.selectBuildVariant` | Polishing | Unreleased | Visible workspace context item. |
 | Status Bar | Logcat controls | Left status bar | `androidDevkit.logcatStatusMenu` | Polishing | Unreleased | Visible only when devices/emulators are available. |
-| Devices | Deep link testing | Command palette, device context menu | `androidDevkit.testDeepLink` | Planned | — | Launch `am start -d <URI>` with URI input box. |
-| Devices | Screen recording | Command palette, device context menu | `androidDevkit.recordScreen` | Planned | — | Duration picker, `screenrecord` + pull + reveal. |
-| Devices | App permission manager | Command palette, device context menu | `androidDevkit.grantPermission`, `androidDevkit.revokePermission` | Planned | — | Grant/revoke runtime permissions via `pm`. |
+| Devices | Deep link testing | Command palette, device context menu | `androidDevkit.testDeepLink` | Implemented | 0.5.0 | Launch `am start -d <URI>` with URI input box. |
+| Devices | Screen recording | Command palette, device context menu | `androidDevkit.recordScreen` | Implemented | 0.5.0 | Duration picker, `screenrecord` + pull + reveal. |
+| Devices | App permission manager | Command palette, device context menu | `androidDevkit.grantPermission`, `androidDevkit.revokePermission` | Implemented | 0.5.0 | Grant/revoke runtime permissions via `pm`. |
+| Devices | Scrcpy screen mirroring | Command palette, device context menu | `androidDevkit.mirrorScreen` | Implemented | 0.5.0 | Scrcpy-based mirroring with codec configuration. |
+| Devices | Open Device File | Device file explorer context menu | `androidDevkit.openDeviceFile` | Implemented | 0.5.0 | Read files directly from device in editor tab. |
+| Android Virtual Devices | Emulator launch mode | AVD context menu, settings | `androidDevkit.emulatorLaunchMode` | Implemented | 0.5.0 | Cold boot / quick boot selection. |
 | Logcat | Crash log highlighter | Logcat output channel | — | Planned | — | Detect stack traces, linkify to source files. |
 
 ## Follow-up fields to maintain over time

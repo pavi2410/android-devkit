@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Deep link testing** — launch `adb shell am start -d <URI>` with URI input box
+- **Screen recording** — `adb shell screenrecord` with duration picker, save & open
+- **App permission manager** — grant/revoke runtime permissions via context menu
+- **Scrcpy screen mirroring** — integrated scrcpy with codec configuration and video streaming support
+- **Open Device File** command — read files directly from device in a VS Code editor tab
+- **Emulator launch mode** setting — choose between cold boot and quick boot
+- **Device transport eviction** — automatically evict stale ADB transports for cleaner device management
+
+### Changed
+- ADB layer migrated to Tango ADB library (`@yume-chan/adb`) — replaces shell-based ADB commands with a native TypeScript transport
+- Build tooling upgraded to Vite 8 + Rolldown
+- Dependency versions centralized via Bun catalog in root `package.json`
+- Logcat rewritten to use Tango ADB streaming; improved refresh and lifecycle handling
+- Build & Run enhanced with multi-module support and improved error handling
+- Shell quoting added for ADB command arguments to prevent injection
+- Device command functions now accept an `ExtensionContext` parameter
+- `ScrcpyClient` renamed to `LocalAdbScrcpyClient` for clarity
+- CI/publish workflows updated to `actions/checkout@v6`
+
+### Fixed
+- Runner test `cwd` output resolved to real path for cross-platform consistency
+- Logcat refresh and session lifecycle handling improvements
+
 ## [0.4.0] - 2026-03-08
 
 ### Added

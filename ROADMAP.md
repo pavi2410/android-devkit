@@ -42,16 +42,24 @@
 ## Milestone 4: Quick Wins (v0.5.0)
 
 **Priority features:**
-- [ ] Deep link testing — launch `adb shell am start -d <URI>` with input box
-- [ ] Screen recording — `adb shell screenrecord` with duration picker, save & open
-- [ ] App permission manager — grant/revoke runtime permissions via context menu
+- [x] Deep link testing — launch `adb shell am start -d <URI>` with input box
+- [x] Screen recording — `adb shell screenrecord` with duration picker, save & open
+- [x] App permission manager — grant/revoke runtime permissions via context menu
 - [ ] Crash log highlighter — detect stack traces, linkify to source files
 
 **Device & ADB:**
 - [ ] Device properties panel — expose `getDeviceProps` output in a read-only detail view
 - [ ] App component browser — list activities, services, receivers, providers from `dumpsys`
 - [ ] Wireless ADB auto-discovery — passive mDNS scan, show discoverable devices in welcome view
-- [ ] scrcpy integration — launch device mirroring if scrcpy is installed
+- [x] scrcpy integration — launch device mirroring with codec configuration and video streaming
+- [x] Open Device File — read files directly from device in a VS Code editor tab
+- [x] Device transport eviction — automatically evict stale ADB transports
+
+**Infrastructure:**
+- [x] Migrated ADB layer to Tango ADB library (`@yume-chan/adb`)
+- [x] Upgraded build tooling to Vite 8 + Rolldown
+- [x] Centralized dependency versions via Bun catalog
+- [x] Emulator launch mode setting (cold boot / quick boot)
 
 **Build & Gradle:**
 - [ ] Gradle task search/filter in tree view
@@ -94,5 +102,5 @@
 - [ ] Layout Inspector — dump view hierarchy via `uiautomator dump`
 - [ ] APK Analyzer — parse APK contents, DEX stats, resource table
 - [ ] Profiler integration — CPU/memory sampling via `simpleperf`/`am profile`
-- [ ] Device screen mirroring (scrcpy-based)
+- [x] Device screen mirroring (scrcpy-based) — moved to Milestone 4
 - [ ] Compose Preview (if Kotlin LSP supports it)
