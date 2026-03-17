@@ -5,6 +5,7 @@ import type { AdbService } from "../services/adb";
 import type { BuildRunProvider } from "../views/build-run";
 import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS } from "./ids";
 import { promptForAndroidAppPackage } from "../utils/android-app";
+import { getOutputChannel } from "../utils/output";
 
 async function showBuildResultActions(
   message: string,
@@ -33,7 +34,7 @@ export function registerRunCommands(
   adbService: AdbService,
   buildRunProvider: BuildRunProvider
 ): void {
-  const outputChannel = vscode.window.createOutputChannel("ADK: Build & Run", "ansi");
+  const outputChannel = getOutputChannel("Build & Run", "ansi");
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(

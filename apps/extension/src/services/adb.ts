@@ -8,6 +8,7 @@ import {
   resolveAdbPath,
   type Device,
 } from "@android-devkit/adb";
+import { getOutputChannel } from "../utils/output";
 
 export interface DeviceInfo extends Device {
   name: string;
@@ -18,7 +19,7 @@ export interface DeviceInfo extends Device {
 export class AdbService {
   private client: AdbClient;
   private _onDevicesChanged = new vscode.EventEmitter<void>();
-  readonly outputChannel = vscode.window.createOutputChannel("ADK: ADB");
+  readonly outputChannel = getOutputChannel("ADB");
 
   readonly onDevicesChanged = this._onDevicesChanged.event;
 

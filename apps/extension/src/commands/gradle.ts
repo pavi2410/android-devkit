@@ -2,13 +2,14 @@ import * as vscode from "vscode";
 import type { GradleService } from "../services/gradle";
 import type { GradleTasksProvider, TaskItem } from "../views/gradle-tasks";
 import { ANDROID_DEVKIT_COMMANDS } from "./ids";
+import { getOutputChannel } from "../utils/output";
 
 export function registerGradleCommands(
   context: vscode.ExtensionContext,
   gradleService: GradleService,
   gradleTasksProvider: GradleTasksProvider
 ): void {
-  const outputChannel = vscode.window.createOutputChannel("ADK: Gradle", "ansi");
+  const outputChannel = getOutputChannel("Gradle", "ansi");
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(

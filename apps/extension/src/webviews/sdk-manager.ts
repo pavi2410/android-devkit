@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import type { SdkService } from "../services/sdk";
+import { getOutputChannel } from "../utils/output";
 
 type MessageToHost =
   | { type: "ready" }
@@ -61,7 +62,7 @@ export class SdkManagerPanel {
   ) {
     this.panel = panel;
     this.panel.webview.html = this.getHtml();
-    this.outputChannel = vscode.window.createOutputChannel("ADK: SDK Manager");
+    this.outputChannel = getOutputChannel("SDK Manager");
 
     this.panel.webview.onDidReceiveMessage(
       (msg: MessageToHost) => this.handleMessage(msg),

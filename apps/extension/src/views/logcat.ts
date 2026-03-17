@@ -4,6 +4,8 @@ import type { LogcatService } from "../services/logcat";
 import { CONTEXT_KEYS } from "../commands/ids";
 import { setAndroidDevkitContext } from "../config/context";
 import { getLogcatDefaultLogLevel, getLogcatMaxLines } from "../config/settings";
+import { LogcatBuffer } from "../models/logcat-buffer";
+import { getOutputChannel } from "../utils/output";
 
 type LogcatSessionState = "stopped" | "running" | "paused";
 
@@ -26,8 +28,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   readonly onDidSessionChange = this._onDidSessionChange.event;
 
   private outputChannel: vscode.LogOutputChannel;
-  private entries: LogcatEntry[] = [];
-  private maxEntries: number;
+  private buffer: LogcatBuffer;
   private filter?: string;
   private hasAvailableDevices = false;
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -35,8 +36,8 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   private sessionState: LogcatSessionState = "stopped";
 
   constructor(private logcatService: LogcatService, private context?: vscode.ExtensionContext) {
-    this.outputChannel = vscode.window.createOutputChannel("ADK: Logcat", { log: true });
-    this.maxEntries = getLogcatMaxLines();
+    this.outputChannel = getOutputChannel("Logcat", { log: true });
+    this.buffer = new LogcatBuffer(getLogcatMaxLines());
 
     // Restore persisted filter state
     const persistedLevel = context?.workspaceState.get<LogLevel>("logcat.minLevel");
@@ -90,7 +91,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
       return [];
     }
 
-    if (this.sessionState === "stopped" && this.entries.length === 0 && !this.filter && !this.session.packageName) {
+    if (this.sessionState === "stopped" && this.buffer.length === 0 && !this.filter && !this.session.packageName) {
       return [];
     }
 
@@ -121,7 +122,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
     }
 
     // Stats
-    items.push(new StatsItem(this.entries.length, this.maxEntries));
+    items.push(new StatsItem(this.buffer.length, getLogcatMaxLines()));
 
     return items;
   }
@@ -130,35 +131,9 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    * Add a log entry and write to output channel
    */
   private addEntry(entry: LogcatEntry): void {
-    // Check level filter
-    const levels: LogLevel[] = ["V", "D", "I", "W", "E", "F", "S"];
-    if (levels.indexOf(entry.level) < levels.indexOf(this.session.minLevel)) {
-      return;
-    }
+    const added = this.buffer.add(entry, this.session.minLevel, this.filter, this.session.pid);
+    if (!added) return;
 
-    // Check text filter
-    if (this.filter) {
-      const filterLower = this.filter.toLowerCase();
-      if (
-        !entry.tag.toLowerCase().includes(filterLower) &&
-        !entry.message.toLowerCase().includes(filterLower)
-      ) {
-        return;
-      }
-    }
-
-    // Check package/PID filter
-    if (this.session.pid && entry.pid !== this.session.pid) {
-      return;
-    }
-
-    // Add to entries list (with max limit)
-    this.entries.push(entry);
-    if (this.entries.length > this.maxEntries) {
-      this.entries.shift();
-    }
-
-    // Write to output channel
     this.writeToOutput(entry);
     this.scheduleRefresh();
   }
@@ -175,7 +150,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
       fractionalSecondDigits: 3,
     });
 
-    const message = this.linkifyStackTrace(entry.message);
+    const message = this.buffer.linkifyStackTrace(entry.message);
     const line = `${time} ${entry.pid.toString().padStart(5)} ${entry.tid.toString().padStart(5)} ${entry.level} ${entry.tag}: ${message}`;
 
     // Use appropriate log level method
@@ -198,40 +173,6 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
         break;
       default:
         this.outputChannel.appendLine(line);
-    }
-  }
-
-  /**
-   * Attempt to resolve stack trace file references to workspace paths
-   * so VS Code can auto-linkify them in the output channel.
-   */
-  private linkifyStackTrace(message: string): string {
-    // Match Java/Kotlin stack trace: "at com.example.Class.method(FileName.java:42)"
-    const stackTraceRegex = /^(\s*at\s+\S+)\((\w+\.\w+):(\d+)\)$/;
-    const match = message.match(stackTraceRegex);
-    if (!match) return message;
-
-    const [, prefix, filename, lineNum] = match;
-    const resolved = this.resolvedFileCache.get(filename);
-    if (resolved !== undefined) {
-      return resolved
-        ? `${prefix}(${resolved}:${lineNum})`
-        : message;
-    }
-
-    // Async resolve, won't linkify this occurrence but will cache for next
-    void this.resolveSourceFile(filename);
-    return message;
-  }
-
-  private resolvedFileCache = new Map<string, string | null>();
-
-  private async resolveSourceFile(filename: string): Promise<void> {
-    try {
-      const files = await vscode.workspace.findFiles(`**/${filename}`, "**/build/**", 1);
-      this.resolvedFileCache.set(filename, files[0]?.fsPath ?? null);
-    } catch {
-      this.resolvedFileCache.set(filename, null);
     }
   }
 
@@ -315,7 +256,7 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
    * Clear logs
    */
   async clear(device?: string): Promise<void> {
-    this.entries = [];
+    this.buffer.clear();
     this.outputChannel.clear();
     await this.logcatService.clear(device ?? this.session.serial);
     this.refresh();
@@ -369,18 +310,11 @@ export class LogcatTreeProvider implements vscode.TreeDataProvider<LogcatTreeIte
   }
 
   getEntries(): readonly LogcatEntry[] {
-    return this.entries;
+    return this.buffer.getEntries();
   }
 
   static formatEntry(entry: LogcatEntry): string {
-    const time = entry.timestamp.toLocaleTimeString("en-US", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      fractionalSecondDigits: 3,
-    });
-    return `${time} ${entry.pid.toString().padStart(5)} ${entry.tid.toString().padStart(5)} ${entry.level} ${entry.tag}: ${entry.message}`;
+    return LogcatBuffer.formatEntry(entry);
   }
 
   dispose(): void {

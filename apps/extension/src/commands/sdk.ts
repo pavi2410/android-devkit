@@ -1,12 +1,13 @@
 import * as vscode from "vscode";
 import type { SdkService } from "../services/sdk";
 import { ANDROID_DEVKIT_COMMANDS } from "./ids";
+import { getOutputChannel } from "../utils/output";
 
 export function registerSdkCommands(
   context: vscode.ExtensionContext,
   sdkService: SdkService
 ): void {
-  const outputChannel = vscode.window.createOutputChannel("ADK: SDK Manager");
+  const outputChannel = getOutputChannel("SDK Manager");
   context.subscriptions.push(outputChannel);
 
   context.subscriptions.push(

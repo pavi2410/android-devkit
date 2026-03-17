@@ -9,6 +9,7 @@ import {
   AndroidKeyEventMeta,
 } from "@android-devkit/adb";
 import type { AdbService } from "./adb";
+import { getOutputChannel } from "../utils/output";
 
 const SCRCPY_SERVER_VERSION = "v3.3.3";
 const SCRCPY_SERVER_FILENAME = `scrcpy-server-${SCRCPY_SERVER_VERSION}`;
@@ -21,7 +22,7 @@ interface ScrcpySession {
 
 export class ScrcpyService implements vscode.Disposable {
   private sessions = new Map<string, ScrcpySession>();
-  private outputChannel = vscode.window.createOutputChannel("ADK: Scrcpy", { log: true });
+  private outputChannel = getOutputChannel("Scrcpy", { log: true });
 
   constructor(
     private readonly adbService: AdbService,
