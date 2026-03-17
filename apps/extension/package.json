@@ -695,6 +695,16 @@
           "type": "number",
           "default": 1e4,
           "description": "Maximum number of Logcat lines to keep in memory before older entries are discarded."
+        },
+        "androidDevkit.emulator.launchMode": {
+          "type": "string",
+          "default": "internal",
+          "enum": ["internal", "external"],
+          "enumDescriptions": [
+            "Display the emulator inside VS Code (like Android Studio)",
+            "Launch the emulator in a separate window"
+          ],
+          "description": "Where to display the Android Emulator when launching an AVD."
         }
       }
     },

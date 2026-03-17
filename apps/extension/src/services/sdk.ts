@@ -137,10 +137,10 @@ export class SdkService {
     this._onAvdsChanged.fire();
   }
 
-  launchAvd(name: string): void {
+  launchAvd(name: string, options?: { noWindow?: boolean }): void {
     const sdkPath = this.getSdkPath();
     if (!sdkPath) throw new Error("Android SDK not found.");
-    launchAvd(sdkPath, name);
+    launchAvd(sdkPath, name, options);
   }
 
   wipeAvdData(name: string): void {

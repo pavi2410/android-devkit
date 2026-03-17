@@ -5,15 +5,20 @@ export function getEmulatorPath(sdkPath: string): string | undefined {
   return resolveEmulatorToolPath(sdkPath, "emulator");
 }
 
-export function launchAvd(sdkPath: string, name: string): void {
+export function launchAvd(sdkPath: string, name: string, options?: { noWindow?: boolean }): void {
   const emulatorPath = getEmulatorPath(sdkPath);
   if (!emulatorPath) {
     throw new Error(`emulator not found in SDK at: ${sdkPath}`);
   }
 
+  const args = ["-avd", name];
+  if (options?.noWindow) {
+    args.push("-no-window");
+  }
+
   const proc = spawnCommand({
     command: emulatorPath,
-    args: ["-avd", name],
+    args,
     detached: true,
     stdio: "ignore",
     env: { ...process.env, ANDROID_SDK_ROOT: sdkPath },

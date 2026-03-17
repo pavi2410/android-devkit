@@ -1,13 +1,19 @@
 import * as vscode from "vscode";
 import type { SdkService } from "../services/sdk";
+import type { AdbService } from "../services/adb";
+import type { ScrcpyService } from "../services/scrcpy";
 import type { AvdManagerProvider } from "../views/avd-manager";
 import { AvdItem } from "../views/avd-manager";
+import { ScrcpyPanel } from "../webviews/scrcpy";
+import { getEmulatorLaunchMode } from "../config/settings";
 import { ANDROID_DEVKIT_COMMANDS } from "./ids";
 
 export function registerAvdCommands(
   context: vscode.ExtensionContext,
   sdkService: SdkService,
-  avdManagerProvider: AvdManagerProvider
+  avdManagerProvider: AvdManagerProvider,
+  adbService: AdbService,
+  scrcpyService: ScrcpyService
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.refreshAvds, () => {
@@ -110,9 +116,43 @@ export function registerAvdCommands(
 
       if (!name) return;
 
+      const launchMode = getEmulatorLaunchMode();
+
       try {
-        sdkService.launchAvd(name);
-        vscode.window.showInformationMessage(`Launching emulator: ${name}`);
+        if (launchMode === "external") {
+          sdkService.launchAvd(name);
+          vscode.window.showInformationMessage(`Launching emulator: ${name}`);
+        } else {
+          sdkService.launchAvd(name, { noWindow: true });
+          await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: "Waiting for emulator...", cancellable: true },
+            async (_progress, token) => {
+              const pollInterval = 1000;
+              const timeout = 60000;
+              const start = Date.now();
+
+              while (Date.now() - start < timeout) {
+                if (token.isCancellationRequested) return;
+
+                const devices = await adbService.getDevices();
+                for (const device of devices) {
+                  if (device.state === "device" && device.serial.startsWith("emulator-")) {
+                    const avdName = await adbService.getEmulatorAvdName(device.serial);
+                    if (avdName === name) {
+                      const displayName = name.replace(/_/g, " ");
+                      ScrcpyPanel.show(context, scrcpyService, device.serial, displayName);
+                      return;
+                    }
+                  }
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, pollInterval));
+              }
+
+              vscode.window.showWarningMessage(`Timed out waiting for emulator "${name}" to start.`);
+            }
+          );
+        }
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Unknown error";
         vscode.window.showErrorMessage(`Failed to launch AVD: ${msg}`);

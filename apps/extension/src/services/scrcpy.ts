@@ -21,6 +21,7 @@ interface ScrcpySession {
 
 export class ScrcpyService implements vscode.Disposable {
   private sessions = new Map<string, ScrcpySession>();
+  private outputChannel = vscode.window.createOutputChannel("ADK: Scrcpy", { log: true });
 
   constructor(
     private readonly adbService: AdbService,
@@ -28,6 +29,8 @@ export class ScrcpyService implements vscode.Disposable {
   ) {}
 
   async startMirroring(serial: string, panel: vscode.WebviewPanel): Promise<void> {
+    this.outputChannel.info(`Starting mirroring for device: ${serial}`);
+
     // Stop any existing session for this device
     await this.stopMirroring(serial);
 
@@ -58,7 +61,7 @@ export class ScrcpyService implements vscode.Disposable {
     // Handle video stream
     this.pipeVideoToWebview(serial, session).catch((err) => {
       if (!session.disposed) {
-        console.error("Scrcpy video stream error:", err);
+        this.outputChannel.error(`Video stream error for ${serial}:`, err);
       }
     });
 
@@ -72,7 +75,7 @@ export class ScrcpyService implements vscode.Disposable {
     });
   }
 
-  private async pipeVideoToWebview(_serial: string, session: ScrcpySession): Promise<void> {
+  private async pipeVideoToWebview(serial: string, session: ScrcpySession): Promise<void> {
     const videoStream = await session.client.videoStream;
     if (!videoStream) {
       session.panel.webview.postMessage({
@@ -81,6 +84,8 @@ export class ScrcpyService implements vscode.Disposable {
       });
       return;
     }
+
+    this.outputChannel.info(`Video stream started for ${serial}: ${videoStream.metadata.codec} ${videoStream.metadata.width}x${videoStream.metadata.height}`);
 
     // Send metadata
     session.panel.webview.postMessage({
@@ -127,57 +132,63 @@ export class ScrcpyService implements vscode.Disposable {
 
     const message = msg as WebviewMessage;
 
-    switch (message.type) {
-      case "touch":
-        session.client.controller.injectTouch({
-          action: message.action,
-          pointerId: BigInt(message.pointerId ?? 0),
-          pointerX: message.x,
-          pointerY: message.y,
-          videoWidth: message.screenWidth,
-          videoHeight: message.screenHeight,
-          pressure: message.pressure ?? 1.0,
-          actionButton: 0,
-          buttons: 0,
-        });
-        break;
+    try {
+      switch (message.type) {
+        case "touch":
+          session.client.controller.injectTouch({
+            action: message.action,
+            pointerId: BigInt(message.pointerId ?? 0),
+            pointerX: message.x,
+            pointerY: message.y,
+            videoWidth: message.screenWidth,
+            videoHeight: message.screenHeight,
+            pressure: message.pressure ?? 1.0,
+            actionButton: 0,
+            buttons: 0,
+          });
+          break;
 
-      case "key":
-        session.client.controller.injectKeyCode({
-          action: message.action,
-          keyCode: message.keyCode,
-          repeat: 0,
-          metaState: message.metaState ?? AndroidKeyEventMeta.None,
-        });
-        break;
+        case "key":
+          session.client.controller.injectKeyCode({
+            action: message.action,
+            keyCode: message.keyCode,
+            repeat: 0,
+            metaState: message.metaState ?? AndroidKeyEventMeta.None,
+          });
+          break;
 
-      case "text":
-        session.client.controller.injectText(message.text);
-        break;
+        case "text":
+          session.client.controller.injectText(message.text);
+          break;
 
-      case "scroll":
-        session.client.controller.injectScroll({
-          pointerX: message.x,
-          pointerY: message.y,
-          videoWidth: message.screenWidth,
-          videoHeight: message.screenHeight,
-          scrollX: message.deltaX ?? 0,
-          scrollY: message.deltaY ?? 0,
-          buttons: 0,
-        });
-        break;
+        case "scroll":
+          session.client.controller.injectScroll({
+            pointerX: message.x,
+            pointerY: message.y,
+            videoWidth: message.screenWidth,
+            videoHeight: message.screenHeight,
+            scrollX: message.deltaX ?? 0,
+            scrollY: message.deltaY ?? 0,
+            buttons: 0,
+          });
+          break;
 
-      case "clipboard":
-        session.client.controller.setClipboard({
-          content: message.content,
-          paste: true,
-          sequence: 0n,
-        });
-        break;
+        case "clipboard":
+          session.client.controller.setClipboard({
+            content: message.content,
+            paste: true,
+            sequence: 0n,
+          });
+          break;
 
-      case "rotate":
-        session.client.controller.rotateDevice();
-        break;
+        case "rotate":
+          session.client.controller.rotateDevice();
+          break;
+      }
+    } catch (err) {
+      this.outputChannel.error(`Controller error for ${serial}:`, err);
+      session.disposed = true;
+      void this.stopMirroring(serial);
     }
   }
 
@@ -185,13 +196,14 @@ export class ScrcpyService implements vscode.Disposable {
     const session = this.sessions.get(serial);
     if (!session) return;
 
+    this.outputChannel.info(`Stopping mirroring for device: ${serial}`);
     session.disposed = true;
     this.sessions.delete(serial);
 
     try {
       await session.client.close();
-    } catch {
-      // Ignore errors during cleanup
+    } catch (err) {
+      this.outputChannel.debug(`Cleanup error for ${serial} (ignored):`, err);
     }
   }
 
@@ -199,5 +211,6 @@ export class ScrcpyService implements vscode.Disposable {
     for (const [serial] of this.sessions) {
       void this.stopMirroring(serial);
     }
+    this.outputChannel.dispose();
   }
 }

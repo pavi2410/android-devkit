@@ -6,6 +6,7 @@ export const ANDROID_DEVKIT_SETTINGS = {
   sdkPath: "sdkPath",
   logcatDefaultLogLevel: "logcat.defaultLogLevel",
   logcatMaxLines: "logcat.maxLines",
+  emulatorLaunchMode: "emulator.launchMode",
 } as const;
 
 export type AndroidDevkitSettingKey =
@@ -36,6 +37,10 @@ export function getLogcatDefaultLogLevel(): LogLevel {
 
 export function getLogcatMaxLines(): number {
   return getAndroidDevkitConfiguration().get<number>(ANDROID_DEVKIT_SETTINGS.logcatMaxLines, 10000);
+}
+
+export function getEmulatorLaunchMode(): "internal" | "external" {
+  return getAndroidDevkitConfiguration().get<"internal" | "external">(ANDROID_DEVKIT_SETTINGS.emulatorLaunchMode, "internal");
 }
 
 export function openAndroidDevkitSetting(settingKey: AndroidDevkitSettingKey): Thenable<unknown> {

@@ -182,7 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerDeviceCommands(context, adbService, scrcpyService, devicesProvider, fileExplorerProvider);
   registerLogcatCommands(context, adbService, logcatProvider);
   registerSdkCommands(context, sdkService);
-  registerAvdCommands(context, sdkService, avdManagerProvider);
+  registerAvdCommands(context, sdkService, avdManagerProvider, adbService, scrcpyService);
   registerGradleCommands(context, gradleService, gradleTasksProvider);
   registerRunCommands(context, gradleService, adbService, buildRunProvider);
   registerCommandMenu(context);
