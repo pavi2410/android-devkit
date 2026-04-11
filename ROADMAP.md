@@ -39,7 +39,9 @@
 - [x] Screenshot → clipboard — offer "Copy to Clipboard" after `takeScreenshot`
 - [x] App data wiper — `adb shell pm clear <package>` as a right-click action
 
-## Milestone 4: Quick Wins (v0.5.0)
+## Milestone 4: Quick Wins (v0.5.0) - Released
+
+The checked items in this milestone shipped in v0.5.0 on 2026-04-12. Unchecked items remain backlog candidates for the next milestone.
 
 **Priority features:**
 - [x] Deep link testing — launch `adb shell am start -d <URI>` with input box
@@ -48,6 +50,7 @@
 - [ ] Crash log highlighter — detect stack traces, linkify to source files
 
 **Device & ADB:**
+- [x] ADB status and recovery actions — inspect server/device health from the status bar or command palette
 - [ ] Device properties panel — expose `getDeviceProps` output in a read-only detail view
 - [ ] App component browser — list activities, services, receivers, providers from `dumpsys`
 - [ ] Wireless ADB auto-discovery — passive mDNS scan, show discoverable devices in welcome view
@@ -59,6 +62,7 @@
 - [x] Migrated ADB layer to Tango ADB library (`@yume-chan/adb`)
 - [x] Upgraded build tooling to Vite 8 + Rolldown
 - [x] Centralized dependency versions via Bun catalog
+- [x] Upgraded workspace TypeScript to v6
 - [x] Emulator launch mode setting (cold boot / quick boot)
 
 **Build & Gradle:**

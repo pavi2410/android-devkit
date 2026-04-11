@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-12
+
 ### Added
 - **Deep link testing** — launch `adb shell am start -d <URI>` with URI input box
 - **Screen recording** — `adb shell screenrecord` with duration picker, save & open
@@ -10,11 +12,13 @@
 - **Open Device File** command — read files directly from device in a VS Code editor tab
 - **Emulator launch mode** setting — choose between cold boot and quick boot
 - **Device transport eviction** — automatically evict stale ADB transports for cleaner device management
+- **ADB status command and status bar health surface** — inspect server/device state and run refresh, start, restart, or output actions
 
 ### Changed
 - ADB layer migrated to Tango ADB library (`@yume-chan/adb`) — replaces shell-based ADB commands with a native TypeScript transport
 - Build tooling upgraded to Vite 8 + Rolldown
 - Dependency versions centralized via Bun catalog in root `package.json`
+- TypeScript upgraded to v6 across the workspace
 - Logcat rewritten to use Tango ADB streaming; improved refresh and lifecycle handling
 - Build & Run enhanced with multi-module support and improved error handling
 - Shell quoting added for ADB command arguments to prevent injection
