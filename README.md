@@ -142,6 +142,8 @@ android-devkit/
 
 Contributions are welcome! Please open an issue or submit a pull request.
 
+For versioned releases, see [RELEASE.md](RELEASE.md).
+
 ## License
 
 MIT
