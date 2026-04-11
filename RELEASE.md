@@ -13,7 +13,7 @@ Releases are driven from `main` and published from the VS Code extension package
 
 ## Prerequisites
 
-- `bun install`
+- `pnpm install`
 - Push access to `main`
 - `gh` authenticated for checking Actions runs
 - Marketplace secrets configured in GitHub Actions:
@@ -59,13 +59,13 @@ git log --oneline v0.4.0..HEAD
 Run the workspace clean first:
 
 ```bash
-bun run clean
+pnpm run clean
 ```
 
 Then build the monorepo from the root:
 
 ```bash
-bun run build
+pnpm run build
 ```
 
 Notes:
@@ -79,7 +79,7 @@ Notes:
 Run all tests from the repository root:
 
 ```bash
-bun run test
+pnpm run test
 ```
 
 This validates:
@@ -159,7 +159,7 @@ git ls-remote --tags origin 'v0.5.0'
 The `Publish Extension` workflow runs on tag pushes and currently does the following:
 
 1. Checks out the repository.
-2. Installs Bun dependencies.
+2. Installs pnpm dependencies.
 3. Builds all packages.
 4. Builds the SDK Manager webview.
 5. Packages the VSIX from `apps/extension`.
@@ -193,9 +193,9 @@ After the publish workflow succeeds, you can create a GitHub Release for the tag
 ## Example command sequence
 
 ```bash
-bun run clean
-bun run build
-bun run test
+pnpm run clean
+pnpm run build
+pnpm run test
 
 git add CHANGELOG.md FEATURE_MATRIX.md ROADMAP.md apps/extension/package.json
 git commit -m "chore: release v0.5.0"

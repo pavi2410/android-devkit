@@ -4,11 +4,10 @@
     {
       "label": "build-extension",
       "type": "shell",
-      "command": "bun run build",
+      "command": "pnpm run build",
       "options": {
-        "cwd": "${workspaceFolder}/apps/extension"
+        "cwd": "${workspaceFolder}"
       },
-      "dependsOn": ["build-packages", "build-webview-sdk-manager"],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -16,33 +15,13 @@
       "problemMatcher": ["$tsc"]
     },
     {
-      "label": "build-packages",
+      "label": "watch-extension",
       "type": "shell",
-      "command": "bun run --filter './packages/*' build",
+      "command": "pnpm run dev",
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "group": "build",
-      "problemMatcher": ["$tsc"]
-    },
-    {
-      "label": "build-webview-sdk-manager",
-      "type": "shell",
-      "command": "bun run build",
-      "options": {
-        "cwd": "${workspaceFolder}/apps/webview-sdk-manager"
-      },
-      "group": "build",
-      "problemMatcher": []
-    },
-    {
-      "label": "watch-extension",
-      "type": "shell",
-      "command": "bun run dev",
-      "options": {
-        "cwd": "${workspaceFolder}/apps/extension"
-      },
-      "dependsOn": ["build-packages", "build-webview-sdk-manager"],
+      "dependsOn": ["build-extension"],
       "isBackground": true,
       "group": "build",
       "problemMatcher": {
@@ -58,8 +37,8 @@
         },
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "^\\[watch\\]",
-          "endsPattern": "^\\s*done\\b|^\\s*\\d+ modules\\b"
+          "beginsPattern": ".",
+          "endsPattern": "^✔\\s+Rebuilt\\s+dist\\s+in\\s+.+$"
         }
       }
     }

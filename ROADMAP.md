@@ -61,7 +61,7 @@ The checked items in this milestone shipped in v0.5.0 on 2026-04-12. Unchecked i
 **Infrastructure:**
 - [x] Migrated ADB layer to Tango ADB library (`@yume-chan/adb`)
 - [x] Upgraded build tooling to Vite 8 + Rolldown
-- [x] Centralized dependency versions via Bun catalog
+- [x] Centralized dependency versions via pnpm catalog
 - [x] Upgraded workspace TypeScript to v6
 - [x] Emulator launch mode setting (cold boot / quick boot)
 

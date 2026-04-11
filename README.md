@@ -66,16 +66,16 @@ Search for **Android DevKit** in the Extensions panel.
 git clone https://github.com/pavi2410/android-devkit.git
 cd android-devkit
 
-bun install
+pnpm install
 
 # Build all packages + webview + extension
-mise run build
+pnpm run build
 
 # Package the VSIX
-mise run package
+pnpm run package
 ```
 
-> Requires [mise](https://mise.jdx.dev/) and [Bun](https://bun.sh/).
+> Requires [mise](https://mise.jdx.dev/), [Node.js](https://nodejs.org/), and [pnpm](https://pnpm.io/).
 
 Then install the generated `.vsix` from `apps/extension/build/`.
 
@@ -95,7 +95,7 @@ Then install the generated `.vsix` from `apps/extension/build/`.
 
 ```
 android-devkit/
-├── mise.toml                        # Task runner (build, dev, package, test)
+├── mise.toml                        # Tool versions for mise
 ├── packages/
 │   ├── tool-core/                   # @android-devkit/tool-core — shared command execution
 │   ├── android-sdk/                 # @android-devkit/android-sdk — SDK discovery & paths
@@ -116,7 +116,8 @@ android-devkit/
 │   │       ├── services/            # AdbService, SdkService, GradleService, LogcatService
 │   │       └── webviews/            # Webview panel hosts (SDK Manager)
 │   └── webview-sdk-manager/         # SDK Manager webview (Vite + React + Tailwind)
-├── package.json                     # Bun workspaces config
+├── package.json                     # pnpm workspace scripts
+├── pnpm-workspace.yaml              # pnpm workspaces + catalog
 └── tsconfig.base.json               # Shared TypeScript config
 ```
 

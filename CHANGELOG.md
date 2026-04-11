@@ -15,9 +15,10 @@
 - **ADB status command and status bar health surface** — inspect server/device state and run refresh, start, restart, or output actions
 
 ### Changed
+- Workspace package manager migrated from Bun to pnpm (via mise)
 - ADB layer migrated to Tango ADB library (`@yume-chan/adb`) — replaces shell-based ADB commands with a native TypeScript transport
 - Build tooling upgraded to Vite 8 + Rolldown
-- Dependency versions centralized via Bun catalog in root `package.json`
+- Dependency versions centralized via pnpm catalog in `pnpm-workspace.yaml`
 - TypeScript upgraded to v6 across the workspace
 - Logcat rewritten to use Tango ADB streaming; improved refresh and lifecycle handling
 - Build & Run enhanced with multi-module support and improved error handling

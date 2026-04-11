@@ -7,119 +7,35 @@ on:
     branches: ["main"]
 
 jobs:
-  build-packages:
-    name: Build packages
+  validate:
+    name: Validate Workspace
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - name: Build all packages
-        run: bun run --filter './packages/*' build
-      - name: Upload package dists
-        uses: actions/upload-artifact@v7
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
         with:
-          name: package-dists
-          path: packages/*/dist
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
 
-  build-webview:
-    name: Build webview
-    runs-on: ubuntu-latest
-    needs: build-packages
-    steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - name: Restore package dists
-        uses: actions/download-artifact@v8
-        with:
-          name: package-dists
-          path: packages
-      - name: Build SDK Manager webview
-        run: bun run build
-        working-directory: apps/webview-sdk-manager
-      - name: Upload webview dist
-        uses: actions/upload-artifact@v7
-        with:
-          name: webview-dist
-          path: apps/extension/dist/webview-sdk-manager
-
-  build-extension:
-    name: Build extension
-    runs-on: ubuntu-latest
-    needs: [build-packages, build-webview]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - name: Restore package dists
-        uses: actions/download-artifact@v8
-        with:
-          name: package-dists
-          path: packages
-      - name: Restore webview dist
-        uses: actions/download-artifact@v8
-        with:
-          name: webview-dist
-          path: apps/extension/dist/webview-sdk-manager
-      - name: Build extension
-        run: bun run build
-        working-directory: apps/extension
+      - name: Build workspace
+        run: pnpm run build
 
       - name: Package extension (dry-run)
-        run: bun run package
-        working-directory: apps/extension
+        run: pnpm run package
+
+      - name: Type-check workspace
+        run: pnpm run typecheck
+
+      - name: Lint workspace
+        run: pnpm run lint
+
+      - name: Run tests
+        run: pnpm run test
 
       - name: Upload VSIX
         uses: actions/upload-artifact@v7
         with:
           name: vsix
           path: apps/extension/build/*.vsix
-
-  typecheck:
-    name: Type-check
-    runs-on: ubuntu-latest
-    needs: build-packages
-    steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - name: Restore package dists
-        uses: actions/download-artifact@v8
-        with:
-          name: package-dists
-          path: packages
-      - name: Type-check packages
-        run: bun run --filter './packages/*' typecheck
-      - name: Type-check webview
-        run: bun run typecheck
-        working-directory: apps/webview-sdk-manager
-      - name: Type-check extension
-        run: bun run typecheck
-        working-directory: apps/extension
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - name: Lint
-        run: bunx oxlint
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    needs: build-packages
-    steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - name: Restore package dists
-        uses: actions/download-artifact@v8
-        with:
-          name: package-dists
-          path: packages
-      - name: Run tests
-        run: bun run --filter '*' test

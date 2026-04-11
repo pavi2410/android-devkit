@@ -775,10 +775,10 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "bun run build",
+    "vscode:prepublish": "pnpm run build",
     "build": "rolldown -c --minify",
     "dev": "rolldown -c --sourcemap --watch",
-    "package": "mkdir -p build && bunx vsce package --no-dependencies -o build/",
+    "package": "mkdir -p build && pnpm exec vsce package --no-dependencies -o build/",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"

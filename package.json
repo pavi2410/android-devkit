@@ -1,26 +1,17 @@
 {
   "name": "android-devkit",
   "private": true,
-  "catalog": {
-    "@types/node": "^25.0.0",
-    "@yume-chan/adb": "^2.5.1",
-    "@yume-chan/adb-scrcpy": "^2.3.2",
-    "@yume-chan/adb-server-node-tcp": "^2.5.2",
-    "@yume-chan/android-bin": "^2.1.0",
-    "@yume-chan/scrcpy": "^2.3.0",
-    "@yume-chan/stream-extra": "^2.1.0",
-    "typescript": "^6.0.2"
-  },
+  "packageManager": "pnpm@10.0.0",
   "scripts": {
-    "build": "bun run --filter '*' build",
-    "build:packages": "bun run --filter './packages/*' build",
-    "build:apps": "bun run --filter './apps/*' build",
-    "package": "bun run --filter './apps/*' package",
-    "dev": "bun run --filter 'android-devkit' dev",
-    "test": "bun run --filter '*' test",
-    "typecheck": "bun run --filter '*' typecheck",
-    "lint": "oxlint",
-    "clean": "bun run --filter '*' clean"
+    "build": "pnpm -r run build",
+    "build:packages": "pnpm -r --filter './packages/*' run build",
+    "build:apps": "pnpm -r --filter './apps/*' run build",
+    "package": "pnpm -r --filter './apps/*' run package",
+    "dev": "pnpm --filter 'android-devkit' run dev",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm exec oxlint",
+    "clean": "pnpm -r run clean"
   },
   "workspaces": [
     "packages/*",
