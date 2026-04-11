@@ -17,7 +17,7 @@ jobs:
       - name: Build all packages
         run: bun run --filter './packages/*' build
       - name: Upload package dists
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package-dists
           path: packages/*/dist
@@ -31,7 +31,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Restore package dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package-dists
           path: packages
@@ -39,7 +39,7 @@ jobs:
         run: bun run build
         working-directory: apps/webview-sdk-manager
       - name: Upload webview dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: webview-dist
           path: apps/extension/dist/webview-sdk-manager
@@ -53,12 +53,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Restore package dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package-dists
           path: packages
       - name: Restore webview dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: webview-dist
           path: apps/extension/dist/webview-sdk-manager
@@ -71,7 +71,7 @@ jobs:
         working-directory: apps/extension
 
       - name: Upload VSIX
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vsix
           path: apps/extension/build/*.vsix
@@ -85,7 +85,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Restore package dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package-dists
           path: packages
@@ -117,7 +117,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Restore package dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package-dists
           path: packages
