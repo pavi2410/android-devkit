@@ -7,6 +7,7 @@ import { registerAvdFeature } from "./features/avd";
 import { registerGradleFeature } from "./features/gradle";
 import { registerSdkFeature } from "./features/sdk";
 import { registerProjectFeature } from "./features/project";
+import { registerAdbStatusFeature } from "./features/adb-status";
 import { registerCommandMenu } from "./commands/command-menu";
 import { ANDROID_DEVKIT_COMMANDS, VS_CODE_COMMANDS } from "./commands/ids";
 
@@ -17,6 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(services);
 
   // Register features
+  registerAdbStatusFeature(context, services);
   const fileExplorerProvider = registerDeviceFeature(context, services);
   registerLogcatFeature(context, services);
   registerBuildRunFeature(context, services);

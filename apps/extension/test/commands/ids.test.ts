@@ -52,6 +52,7 @@ describe("commands/ids", () => {
         "selectRunTarget": "androidDevkit.selectRunTarget",
         "setLogcatFilter": "androidDevkit.setLogcatFilter",
         "setLogcatPackageFilter": "androidDevkit.setLogcatPackageFilter",
+        "showAdbStatus": "androidDevkit.showAdbStatus",
         "showLogcatOutput": "androidDevkit.showLogcatOutput",
         "showSdkInfo": "androidDevkit.showSdkInfo",
         "startLogcat": "androidDevkit.startLogcat",

@@ -130,6 +130,12 @@
         "category": "Android DevKit"
       },
       {
+        "command": "androidDevkit.showAdbStatus",
+        "title": "Show ADB Status",
+        "icon": "$(plug)",
+        "category": "Android DevKit"
+      },
+      {
         "command": "androidDevkit.takeScreenshot",
         "title": "Take Screenshot",
         "icon": "$(device-camera)",

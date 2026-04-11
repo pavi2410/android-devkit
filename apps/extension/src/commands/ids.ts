@@ -43,6 +43,7 @@ export const ANDROID_DEVKIT_COMMANDS = {
   stopApp: "androidDevkit.stopApp",
   installApk: "androidDevkit.installApk",
   addToTerminalPath: "androidDevkit.addToTerminalPath",
+  showAdbStatus: "androidDevkit.showAdbStatus",
   commandMenu: "androidDevkit.commandMenu",
   openSdkManager: "androidDevkit.openSdkManager",
   uninstallApp: "androidDevkit.uninstallApp",

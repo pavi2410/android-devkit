@@ -17,16 +17,53 @@ export interface DeviceInfo extends Device {
   androidVersion: string;
 }
 
+export type AdbServerState = "unknown" | "ready" | "starting" | "recovering" | "offline";
+
+export interface AdbServerStatus {
+  adbPath: string;
+  sdkPath?: string;
+  host: string;
+  port: number;
+  state: AdbServerState;
+  version?: number;
+  deviceCount?: number;
+  readyDeviceCount?: number;
+  lastCheckedAt?: Date;
+  lastRecoveredAt?: Date;
+  recoveryCount: number;
+  lastError?: string;
+}
+
 export class AdbService {
   private client: AdbClient;
   private _onDevicesChanged = new vscode.EventEmitter<void>();
+  private readonly onStatusChangedEmitter = new vscode.EventEmitter<AdbServerStatus>();
+  private readonly serverHost = "127.0.0.1";
+  private readonly serverPort = 5037;
+  private status: AdbServerStatus;
   readonly outputChannel = getOutputChannel("ADB");
 
   readonly onDevicesChanged = this._onDevicesChanged.event;
+  readonly onStatusChanged = this.onStatusChangedEmitter.event;
 
   constructor(private sdkService: SdkService) {
-    const adbPath = this.getAdbPath();
-    this.client = new AdbClient({ adbPath });
+    this.status = {
+      adbPath: this.getAdbPath(),
+      sdkPath: this.getSdkPath(),
+      host: this.serverHost,
+      port: this.serverPort,
+      state: "unknown",
+      recoveryCount: 0,
+    };
+    this.client = this.createClient();
+  }
+
+  private createClient(): AdbClient {
+    return new AdbClient({
+      adbPath: this.getAdbPath(),
+      serverHost: this.serverHost,
+      serverPort: this.serverPort,
+    });
   }
 
   /**
@@ -42,11 +79,150 @@ export class AdbService {
     return this.sdkService.getSdkPath();
   }
 
+  getStatus(): AdbServerStatus {
+    return { ...this.status };
+  }
+
+  private updateStatus(update: Partial<AdbServerStatus>): void {
+    this.status = {
+      ...this.status,
+      adbPath: this.getAdbPath(),
+      sdkPath: this.getSdkPath(),
+      host: this.serverHost,
+      port: this.serverPort,
+      ...update,
+    };
+    this.onStatusChangedEmitter.fire(this.getStatus());
+  }
+
+  private formatError(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  private isRecoverableServerError(error: unknown): boolean {
+    const message = this.formatError(error).toLowerCase();
+    return (
+      message.includes("econnrefused") ||
+      message.includes("connection refused") ||
+      message.includes("connect") && message.includes("5037") ||
+      message.includes("cannot connect to daemon") ||
+      message.includes("failed to connect") ||
+      message.includes("socket hang up") ||
+      message.includes("closed")
+    );
+  }
+
+  private async startServerForRecovery(): Promise<void> {
+    this.updateStatus({ state: "starting", lastError: undefined });
+    this.outputChannel.appendLine("Starting ADB server...");
+    await this.client.startServer();
+    this.client.dispose();
+    this.client = this.createClient();
+  }
+
+  private async restartServerForRecovery(): Promise<void> {
+    this.updateStatus({ state: "recovering" });
+    this.outputChannel.appendLine("Restarting ADB server...");
+    try {
+      await this.client.killServer();
+    } catch (error) {
+      this.outputChannel.appendLine(`ADB kill-server failed during recovery: ${this.formatError(error)}`);
+    }
+    await this.client.startServer();
+    this.client.dispose();
+    this.client = this.createClient();
+  }
+
+  private async runWithServerRecovery<T>(label: string, operation: () => Promise<T>): Promise<T> {
+    try {
+      const result = await operation();
+      this.updateStatus({ state: "ready", lastCheckedAt: new Date(), lastError: undefined });
+      return result;
+    } catch (error) {
+      if (!this.isRecoverableServerError(error)) {
+        this.updateStatus({ state: "offline", lastCheckedAt: new Date(), lastError: this.formatError(error) });
+        throw error;
+      }
+
+      this.outputChannel.appendLine(`ADB ${label} failed: ${this.formatError(error)}`);
+      try {
+        await this.startServerForRecovery();
+        const result = await operation();
+        this.updateStatus({
+          state: "ready",
+          lastCheckedAt: new Date(),
+          lastRecoveredAt: new Date(),
+          recoveryCount: this.status.recoveryCount + 1,
+          lastError: undefined,
+        });
+        return result;
+      } catch (startError) {
+        if (!this.isRecoverableServerError(startError)) {
+          this.updateStatus({ state: "offline", lastCheckedAt: new Date(), lastError: this.formatError(startError) });
+          throw startError;
+        }
+
+        this.outputChannel.appendLine(`ADB ${label} still failed after start-server: ${this.formatError(startError)}`);
+        await this.restartServerForRecovery();
+        try {
+          const result = await operation();
+          this.updateStatus({
+            state: "ready",
+            lastCheckedAt: new Date(),
+            lastRecoveredAt: new Date(),
+            recoveryCount: this.status.recoveryCount + 1,
+            lastError: undefined,
+          });
+          return result;
+        } catch (restartError) {
+          this.updateStatus({ state: "offline", lastCheckedAt: new Date(), lastError: this.formatError(restartError) });
+          throw restartError;
+        }
+      }
+    }
+  }
+
+  async refreshStatus(): Promise<AdbServerStatus> {
+    return this.runWithServerRecovery("status check", async () => {
+      const [version, devices] = await Promise.all([
+        this.client.getServerVersion(),
+        this.client.getDevices(),
+      ]);
+      const readyDeviceCount = devices.filter((d) => d.state === "device").length;
+      this.updateStatus({
+        state: "ready",
+        version,
+        deviceCount: devices.length,
+        readyDeviceCount,
+        lastCheckedAt: new Date(),
+        lastError: undefined,
+      });
+      return this.getStatus();
+    });
+  }
+
+  async startServer(): Promise<void> {
+    await this.startServerForRecovery();
+    await this.refreshStatus();
+    this._onDevicesChanged.fire();
+  }
+
+  async restartServer(): Promise<void> {
+    await this.restartServerForRecovery();
+    await this.refreshStatus();
+    this._onDevicesChanged.fire();
+  }
+
   /**
    * Get list of connected devices with detailed info
    */
   async getDevices(): Promise<DeviceInfo[]> {
-    const devices = await this.client.getDevices();
+    const devices = await this.runWithServerRecovery("device list", () => this.client.getDevices());
+    this.updateStatus({
+      deviceCount: devices.length,
+      readyDeviceCount: devices.filter((d) => d.state === "device").length,
+      lastCheckedAt: new Date(),
+    });
     const deviceInfos: DeviceInfo[] = [];
 
     for (const device of devices) {
@@ -92,7 +268,7 @@ export class AdbService {
    * Connect to a device over wireless ADB
    */
   async connectWireless(host: string, port: number = 5555): Promise<string> {
-    const result = await this.client.connect(host, port);
+    const result = await this.runWithServerRecovery("wireless connect", () => this.client.connect(host, port));
     this._onDevicesChanged.fire();
     return result;
   }
@@ -101,7 +277,7 @@ export class AdbService {
    * Disconnect from a wireless device
    */
   async disconnect(host?: string, port?: number): Promise<string> {
-    const result = await this.client.disconnect(host, port);
+    const result = await this.runWithServerRecovery("disconnect", () => this.client.disconnect(host, port));
     this._onDevicesChanged.fire();
     return result;
   }
@@ -118,7 +294,7 @@ export class AdbService {
     const dir = workspaceFolder?.uri.fsPath ?? require("os").tmpdir();
     const localPath = path.join(dir, filename);
 
-    await this.client.takeScreenshot(serial, localPath);
+    await this.runWithServerRecovery("screenshot", () => this.client.takeScreenshot(serial, localPath));
     return localPath;
   }
 
@@ -129,7 +305,7 @@ export class AdbService {
     serial: string,
     mode?: "bootloader" | "recovery" | "sideload"
   ): Promise<void> {
-    await this.client.reboot(serial, mode);
+    await this.runWithServerRecovery("reboot", () => this.client.reboot(serial, mode));
     this._onDevicesChanged.fire();
   }
 
@@ -137,7 +313,7 @@ export class AdbService {
    * Pair with a device for wireless debugging (Android 11+)
    */
   async pairDevice(host: string, port: number, pairingCode: string): Promise<string> {
-    const result = await this.client.pairDevice(host, port, pairingCode);
+    const result = await this.runWithServerRecovery("pair", () => this.client.pairDevice(host, port, pairingCode));
     this._onDevicesChanged.fire();
     return result;
   }
@@ -146,103 +322,103 @@ export class AdbService {
    * Discover devices via mDNS
    */
   async listMdnsServices(): Promise<{ name: string; type: string; address: string }[]> {
-    return this.client.listMdnsServices();
+    return this.runWithServerRecovery("mDNS service list", () => this.client.listMdnsServices());
   }
 
   /**
    * Check if mDNS is supported
    */
   async isMdnsSupported(): Promise<boolean> {
-    return this.client.isMdnsSupported();
+    return this.runWithServerRecovery("mDNS check", () => this.client.isMdnsSupported());
   }
 
   /**
    * Enable TCP/IP mode on a USB-connected device
    */
   async enableTcpip(serial: string, port: number = 5555): Promise<string> {
-    return this.client.enableTcpip(serial, port);
+    return this.runWithServerRecovery("tcpip enable", () => this.client.enableTcpip(serial, port));
   }
 
   /**
    * List installed packages on a device
    */
   async listPackages(serial: string): Promise<string[]> {
-    return this.client.listPackages(serial);
+    return this.runWithServerRecovery("package list", () => this.client.listPackages(serial));
   }
 
   /**
    * Get PID of a running package
    */
   async getPidForPackage(serial: string, packageName: string): Promise<number | null> {
-    return this.client.getPidForPackage(serial, packageName);
+    return this.runWithServerRecovery("package pid lookup", () => this.client.getPidForPackage(serial, packageName));
   }
 
   /**
    * List files on device
    */
   async listFiles(serial: string, remotePath: string) {
-    return this.client.listFiles(serial, remotePath);
+    return this.runWithServerRecovery("file list", () => this.client.listFiles(serial, remotePath));
   }
 
   /**
    * Read file content from device into a Buffer
    */
   async readFileContent(serial: string, remotePath: string): Promise<Buffer> {
-    return this.client.readFileContent(serial, remotePath);
+    return this.runWithServerRecovery("file read", () => this.client.readFileContent(serial, remotePath));
   }
 
   /**
    * Pull file from device
    */
   async pullFile(serial: string, remotePath: string, localPath: string): Promise<void> {
-    return this.client.pullFile(serial, remotePath, localPath);
+    return this.runWithServerRecovery("file pull", () => this.client.pullFile(serial, remotePath, localPath));
   }
 
   /**
    * Push file to device
    */
   async pushFile(serial: string, localPath: string, remotePath: string): Promise<void> {
-    return this.client.pushFile(serial, localPath, remotePath);
+    return this.runWithServerRecovery("file push", () => this.client.pushFile(serial, localPath, remotePath));
   }
 
   /**
    * Delete file on device
    */
   async deleteRemoteFile(serial: string, remotePath: string, recursive: boolean = false): Promise<void> {
-    return this.client.deleteFile(serial, remotePath, recursive);
+    return this.runWithServerRecovery("file delete", () => this.client.deleteFile(serial, remotePath, recursive));
   }
 
   /**
    * Install an APK on a device
    */
   async installApk(serial: string, apkPath: string): Promise<void> {
-    return this.client.installApk(serial, apkPath, { replace: true });
+    return this.runWithServerRecovery("APK install", () => this.client.installApk(serial, apkPath, { replace: true }));
   }
 
   /**
    * Launch an app on a device
    */
   async launchApp(serial: string, packageName: string, activity?: string): Promise<void> {
-    return this.client.launchApp(serial, packageName, activity);
+    return this.runWithServerRecovery("app launch", () => this.client.launchApp(serial, packageName, activity));
   }
 
   /**
    * Force stop an app on a device
    */
   async forceStopApp(serial: string, packageName: string): Promise<void> {
-    return this.client.forceStopApp(serial, packageName);
+    return this.runWithServerRecovery("force stop", () => this.client.forceStopApp(serial, packageName));
   }
 
   async uninstallPackage(serial: string, packageName: string): Promise<void> {
-    return this.client.uninstallPackage(serial, packageName);
+    return this.runWithServerRecovery("package uninstall", () => this.client.uninstallPackage(serial, packageName));
   }
 
   async clearAppData(serial: string, packageName: string): Promise<void> {
-    return this.client.clearAppData(serial, packageName);
+    return this.runWithServerRecovery("app data clear", () => this.client.clearAppData(serial, packageName));
   }
 
   async launchDeepLink(serial: string, uri: string): Promise<string> {
-    return this.client.launchDeepLink(serial, uri);
+    return this.runWithServerRecovery("deep link", () => this.client.launchDeepLink(serial, uri));
   }
 
   async recordScreen(serial: string, duration: number = 10): Promise<string> {
@@ -253,27 +429,27 @@ export class AdbService {
     const dir = workspaceFolder?.uri.fsPath ?? require("os").tmpdir();
     const localPath = path.join(dir, filename);
 
-    await this.client.recordScreen(serial, localPath, duration);
+    await this.runWithServerRecovery("screen record", () => this.client.recordScreen(serial, localPath, duration));
     return localPath;
   }
 
   async getAppPermissions(serial: string, packageName: string) {
-    return this.client.getAppPermissions(serial, packageName);
+    return this.runWithServerRecovery("permission list", () => this.client.getAppPermissions(serial, packageName));
   }
 
   async grantPermission(serial: string, packageName: string, permission: string): Promise<void> {
-    return this.client.grantPermission(serial, packageName, permission);
+    return this.runWithServerRecovery("permission grant", () => this.client.grantPermission(serial, packageName, permission));
   }
 
   async revokePermission(serial: string, packageName: string, permission: string): Promise<void> {
-    return this.client.revokePermission(serial, packageName, permission);
+    return this.runWithServerRecovery("permission revoke", () => this.client.revokePermission(serial, packageName, permission));
   }
 
   /**
    * Get the AVD name for a running emulator instance
    */
   async getEmulatorAvdName(serial: string): Promise<string | undefined> {
-    return this.client.getEmulatorAvdName(serial);
+    return this.runWithServerRecovery("emulator AVD lookup", () => this.client.getEmulatorAvdName(serial));
   }
 
   /**
@@ -293,21 +469,21 @@ export class AdbService {
    * the underlying Adb transport when logcat is done.
    */
   createLogcat(serial: string): ReturnType<AdbClient["createLogcat"]> {
-    return this.client.createLogcat(serial);
+    return this.runWithServerRecovery("logcat transport", () => this.client.createLogcat(serial));
   }
 
   /**
    * Push scrcpy server binary to device
    */
   async pushScrcpyServer(serial: string, serverBinary: ScrcpyServerBinaryStream): Promise<void> {
-    return this.client.pushScrcpyServer(serial, serverBinary);
+    return this.runWithServerRecovery("scrcpy server push", () => this.client.pushScrcpyServer(serial, serverBinary));
   }
 
   /**
    * Start a scrcpy session for screen mirroring
    */
   async startScrcpy(serial: string, options?: { maxSize?: number; videoBitRate?: number; maxFps?: number }) {
-    return this.client.startScrcpy(serial, options);
+    return this.runWithServerRecovery("scrcpy start", () => this.client.startScrcpy(serial, options));
   }
 
   /**
@@ -335,6 +511,7 @@ export class AdbService {
   dispose(): void {
     this.client.dispose();
     this._onDevicesChanged.dispose();
+    this.onStatusChangedEmitter.dispose();
     this.outputChannel.dispose();
   }
 }
