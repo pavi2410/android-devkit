@@ -9,7 +9,7 @@
     "@yume-chan/android-bin": "^2.1.0",
     "@yume-chan/scrcpy": "^2.3.0",
     "@yume-chan/stream-extra": "^2.1.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   },
   "scripts": {
     "build": "bun run --filter '*' build",

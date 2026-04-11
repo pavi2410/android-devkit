@@ -6,6 +6,7 @@ import {
   type AndroidMotionEventAction,
   type AndroidKeyEventAction,
   type AndroidKeyCode,
+  type ScrcpyServerBinaryStream,
   AndroidKeyEventMeta,
 } from "@android-devkit/adb";
 import type { AdbService } from "./adb";
@@ -51,7 +52,7 @@ export class ScrcpyService implements vscode.Disposable {
       },
     });
 
-    await this.adbService.pushScrcpyServer(serial, stream);
+    await this.adbService.pushScrcpyServer(serial, stream as ScrcpyServerBinaryStream);
 
     // Start scrcpy client
     const client = await this.adbService.startScrcpy(serial);
@@ -61,7 +62,15 @@ export class ScrcpyService implements vscode.Disposable {
 
     // Drain ALL readable streams — ADB is a multiplexed protocol; leaving any
     // stream unread blocks the entire connection (including video).
-    client.clipboard?.pipeTo(new WritableStream()).catch(() => {});
+    void (async () => {
+      const reader = client.clipboard?.getReader();
+      if (!reader) return;
+      try {
+        while (!(await reader.read()).done) {}
+      } catch {
+        // clipboard stream closed
+      }
+    })();
 
     // Consume the scrcpy server process output (stdout/stderr) and log it.
     // Not consuming this will fill the ADB I/O buffer and block the connection.

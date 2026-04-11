@@ -1,5 +1,5 @@
 export { AdbClient, resolveAdbPath } from "./client.js";
-export type { LocalAdbScrcpyClient } from "./client.js";
+export type { LocalAdbScrcpyClient, ScrcpyServerBinaryStream } from "./client.js";
 export { DefaultServerPath } from "@yume-chan/scrcpy";
 
 export {

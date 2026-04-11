@@ -39,10 +39,11 @@ vi.mock("@android-devkit/logcat", () => ({
 import { LogcatService } from "../../src/services/logcat";
 
 const fakeLogcatInstance = { binary: vi.fn(), clear: vi.fn() };
+const fakeDispose = vi.fn();
 
 function createMockAdbService() {
   return {
-    createLogcat: vi.fn().mockResolvedValue(fakeLogcatInstance),
+    createLogcat: vi.fn().mockResolvedValue({ logcat: fakeLogcatInstance, dispose: fakeDispose }),
   } as any;
 }
 

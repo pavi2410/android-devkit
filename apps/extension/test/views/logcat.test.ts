@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { commands } from "vscode";
+import { __clearMockConfig, __setMockConfig } from "vscode";
 import type { LogcatEntry } from "@android-devkit/logcat";
 
 const { FakeStream } = vi.hoisted(() => {
@@ -41,10 +42,11 @@ import { LogcatTreeProvider } from "../../src/views/logcat";
 import { LogcatService } from "../../src/services/logcat";
 
 const fakeLogcatInstance = { binary: vi.fn(), clear: vi.fn() };
+const fakeDispose = vi.fn();
 
 function createMockAdbService() {
   return {
-    createLogcat: vi.fn().mockResolvedValue(fakeLogcatInstance),
+    createLogcat: vi.fn().mockResolvedValue({ logcat: fakeLogcatInstance, dispose: fakeDispose }),
   } as any;
 }
 
@@ -68,6 +70,7 @@ describe("LogcatTreeProvider", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    __clearMockConfig();
     logcatService = new LogcatService(createMockAdbService());
     provider = new LogcatTreeProvider(logcatService);
     provider.setHasAvailableDevices(true);
@@ -146,7 +149,9 @@ describe("LogcatTreeProvider", () => {
 
   describe("max entries rotation", () => {
     it("rotates entries when exceeding max", async () => {
-      (provider as any).maxEntries = 3;
+      __setMockConfig("logcat.maxLines", 3);
+      provider = new LogcatTreeProvider(logcatService);
+      provider.setHasAvailableDevices(true);
       provider.start({ serial: "s1", minLevel: "V" });
       await flushPromises();
 

@@ -174,14 +174,6 @@ export function registerCoreCommands(
   );
 }
 
-const BINARY_EXTENSIONS = new Set([
-  ".apk", ".dex", ".so", ".jar", ".zip", ".gz", ".tar", ".bz2",
-  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico",
-  ".mp3", ".mp4", ".ogg", ".wav", ".aac", ".flac",
-  ".ttf", ".otf", ".woff", ".woff2",
-  ".db", ".sqlite", ".sqlite3",
-]);
-
 function isBinary(buf: Buffer): boolean {
   const check = buf.subarray(0, Math.min(buf.length, 8192));
   for (let i = 0; i < check.length; i++) {

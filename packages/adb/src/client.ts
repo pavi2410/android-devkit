@@ -18,6 +18,7 @@ import type {
 } from "./types.js";
 
 export type LocalAdbScrcpyClient = AdbScrcpyClient<AdbScrcpyOptions3_3_3<true>>;
+export type ScrcpyServerBinaryStream = ReadableStream<MaybeConsumable<Uint8Array>>;
 
 /**
  * Collect a ReadableStream<Uint8Array> into a string.
@@ -949,7 +950,7 @@ export class AdbClient {
    */
   async pushScrcpyServer(
     serial: string,
-    serverBinary: ReadableStream<MaybeConsumable<Uint8Array>>,
+    serverBinary: ScrcpyServerBinaryStream,
   ): Promise<void> {
     const adb = await this.getAdb(serial);
     await AdbScrcpyClient.pushServer(adb, serverBinary, DefaultServerPath);

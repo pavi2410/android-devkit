@@ -7,6 +7,7 @@ import {
   AdbClient,
   resolveAdbPath,
   type Device,
+  type ScrcpyServerBinaryStream,
 } from "@android-devkit/adb";
 import { getOutputChannel } from "../utils/output";
 
@@ -291,14 +292,14 @@ export class AdbService {
    * Returns a dedicated Logcat instance plus a dispose callback that closes
    * the underlying Adb transport when logcat is done.
    */
-  async createLogcat(serial: string) {
+  createLogcat(serial: string): ReturnType<AdbClient["createLogcat"]> {
     return this.client.createLogcat(serial);
   }
 
   /**
    * Push scrcpy server binary to device
    */
-  async pushScrcpyServer(serial: string, serverBinary: ReadableStream<Uint8Array>): Promise<void> {
+  async pushScrcpyServer(serial: string, serverBinary: ScrcpyServerBinaryStream): Promise<void> {
     return this.client.pushScrcpyServer(serial, serverBinary);
   }
 
