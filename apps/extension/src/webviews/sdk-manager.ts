@@ -50,6 +50,7 @@ export class SdkManagerPanel {
         retainContextWhenHidden: true,
       }
     );
+    panel.iconPath = new vscode.ThemeIcon("package");
 
     SdkManagerPanel.instance = new SdkManagerPanel(panel, context, sdkService);
     return SdkManagerPanel.instance;

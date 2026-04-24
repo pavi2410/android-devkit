@@ -47,7 +47,7 @@ export class ScrcpyPanel {
     private readonly serial: string,
   ) {
     this.panel = panel;
-    // this.panel.iconPath = new vscode.ThemeIcon("device-mobile"); // TODO: Add custom icon
+    this.panel.iconPath = new vscode.ThemeIcon("device-mobile");
     this.panel.webview.html = this.getHtml();
 
     this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
