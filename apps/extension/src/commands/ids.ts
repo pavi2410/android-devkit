@@ -34,6 +34,7 @@ export const ANDROID_DEVKIT_COMMANDS = {
   refreshGradleTasks: "androidDevkit.refreshGradleTasks",
   syncGradle: "androidDevkit.syncGradle",
   runGradleTask: "androidDevkit.runGradleTask",
+  runSelectedGradleTasks: "androidDevkit.runSelectedGradleTasks",
   cleanBuild: "androidDevkit.cleanBuild",
   assembleBuild: "androidDevkit.assembleBuild",
   selectBuildVariant: "androidDevkit.selectBuildVariant",
@@ -83,4 +84,5 @@ export const CONTEXT_KEYS = {
   logcatRunning: "androidDevkit.logcatRunning",
   logcatPaused: "androidDevkit.logcatPaused",
   sdkConfigured: "androidDevkit.sdkConfigured",
+  gradleTasksHasSelection: "androidDevkit.gradleTasksHasSelection",
 } as const;

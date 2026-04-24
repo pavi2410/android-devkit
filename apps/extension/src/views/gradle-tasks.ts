@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { GradleService, GradleTask } from "../services/gradle";
-import { ANDROID_DEVKIT_COMMANDS } from "../commands/ids";
+import { CONTEXT_KEYS } from "../commands/ids";
+import { setAndroidDevkitContext } from "../config/context";
 
 type GradleTreeItem = GroupItem | TaskItem | LoadingItem | ErrorItem | NoWorkspaceItem;
 
@@ -10,6 +11,7 @@ export class GradleTasksProvider implements vscode.TreeDataProvider<GradleTreeIt
 
   private tasks: GradleTask[] = [];
   private error: string | undefined;
+  private selectedTaskIds = new Set<string>();
 
   constructor(private gradleService: GradleService) {}
 
@@ -20,6 +22,11 @@ export class GradleTasksProvider implements vscode.TreeDataProvider<GradleTreeIt
   }
 
   getTreeItem(element: GradleTreeItem): vscode.TreeItem {
+    if (element instanceof TaskItem) {
+      element.checkboxState = this.selectedTaskIds.has(element.id!)
+        ? vscode.TreeItemCheckboxState.Checked
+        : vscode.TreeItemCheckboxState.Unchecked;
+    }
     return element;
   }
 
@@ -55,6 +62,32 @@ export class GradleTasksProvider implements vscode.TreeDataProvider<GradleTreeIt
     });
   }
 
+  handleCheckboxChange(event: vscode.TreeCheckboxChangeEvent<GradleTreeItem>): void {
+    for (const [item, state] of event.items) {
+      if (!(item instanceof TaskItem) || !item.id) continue;
+      if (state === vscode.TreeItemCheckboxState.Checked) {
+        this.selectedTaskIds.add(item.id);
+      } else {
+        this.selectedTaskIds.delete(item.id);
+      }
+    }
+    void setAndroidDevkitContext(CONTEXT_KEYS.gradleTasksHasSelection, this.selectedTaskIds.size > 0);
+    this._onDidChangeTreeData.fire();
+  }
+
+  getSelectedTasks(): GradleTask[] {
+    return this.tasks.filter((t) => {
+      const id = `gradle-task:${t.group}:${t.project}:${t.name}`;
+      return this.selectedTaskIds.has(id);
+    });
+  }
+
+  clearSelection(): void {
+    this.selectedTaskIds.clear();
+    void setAndroidDevkitContext(CONTEXT_KEYS.gradleTasksHasSelection, false);
+    this._onDidChangeTreeData.fire();
+  }
+
   dispose(): void {
     this._onDidChangeTreeData.dispose();
   }
@@ -82,11 +115,7 @@ export class TaskItem extends vscode.TreeItem {
     this.tooltip = task.description || task.name;
     this.iconPath = new vscode.ThemeIcon("play-circle");
     this.contextValue = "gradleTask";
-    this.command = {
-      command: ANDROID_DEVKIT_COMMANDS.runGradleTask,
-      title: "Run Task",
-      arguments: [this],
-    };
+    this.checkboxState = vscode.TreeItemCheckboxState.Unchecked;
   }
 }
 

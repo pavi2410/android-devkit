@@ -103,6 +103,44 @@ export function registerGradleCommands(
           }
         }
       );
+    }),
+
+    vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.runSelectedGradleTasks, async () => {
+      const tasks = gradleTasksProvider.getSelectedTasks();
+      if (!tasks.length) return;
+
+      const taskNames = tasks.map((t) =>
+        t.project !== ":" ? `${t.project}:${t.name}` : t.name
+      );
+
+      outputChannel.clear();
+      outputChannel.show(true);
+      outputChannel.appendLine(`Running ${taskNames.length} task(s): ${taskNames.join(", ")}`);
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Gradle: running ${taskNames.length} task(s)`,
+          cancellable: true,
+        },
+        async (_progress, token) => {
+          for (const name of taskNames) {
+            if (token.isCancellationRequested) break;
+            outputChannel.appendLine(`\n▶ ${name}`);
+            try {
+              await gradleService.runTask(name, outputChannel, token);
+              outputChannel.appendLine(`✓ ${name} succeeded.`);
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : "Unknown error";
+              outputChannel.appendLine(`✗ ${name} failed: ${msg}`);
+              vscode.window.showErrorMessage(`Task ${name} failed: ${msg}`);
+              break;
+            }
+          }
+        }
+      );
+
+      gradleTasksProvider.clearSelection();
     })
   );
 }

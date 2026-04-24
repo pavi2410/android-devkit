@@ -9,10 +9,14 @@ export function registerGradleFeature(
 ): void {
   const gradleTasksProvider = new GradleTasksProvider(services.gradle);
 
-  context.subscriptions.push(
-    gradleTasksProvider,
-    vscode.window.registerTreeDataProvider("androidDevkit.gradleTasks", gradleTasksProvider)
-  );
+  const treeView = vscode.window.createTreeView("androidDevkit.gradleTasks", {
+    treeDataProvider: gradleTasksProvider,
+    manageCheckboxStateManually: false,
+  });
+
+  treeView.onDidChangeCheckboxState((e) => gradleTasksProvider.handleCheckboxChange(e));
+
+  context.subscriptions.push(gradleTasksProvider, treeView);
 
   registerGradleCommands(context, services.gradle, gradleTasksProvider);
 }

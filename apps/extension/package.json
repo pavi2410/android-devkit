@@ -352,6 +352,12 @@
         "category": "Android DevKit"
       },
       {
+        "command": "androidDevkit.runSelectedGradleTasks",
+        "title": "Run Selected Tasks",
+        "icon": "$(run-all)",
+        "category": "Android DevKit"
+      },
+      {
         "command": "androidDevkit.cleanBuild",
         "title": "Clean Build",
         "icon": "$(trash)",
@@ -523,6 +529,11 @@
           "command": "androidDevkit.openSdkManager",
           "when": "view == androidDevkit.avdManager",
           "group": "navigation"
+        },
+        {
+          "command": "androidDevkit.runSelectedGradleTasks",
+          "when": "view == androidDevkit.gradleTasks && androidDevkit.gradleTasksHasSelection",
+          "group": "navigation@0"
         },
         {
           "command": "androidDevkit.refreshGradleTasks",
