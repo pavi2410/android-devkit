@@ -213,24 +213,34 @@ export function registerLogcatCommands(
 
       const currentLevel = logcatProvider.getSession().minLevel;
 
-      // Ask for level filter
-      const levelChoice = await vscode.window.showQuickPick(
-        levels.map((l) => ({
+      // Ask for level filter using createQuickPick to show a persistent prompt
+      const levelChoice = await new Promise<LogLevel | undefined>((resolve) => {
+        const picker = vscode.window.createQuickPick<vscode.QuickPickItem & { level: LogLevel }>();
+        picker.title = "Configure Logcat Filters";
+        picker.placeholder = "Select minimum log level";
+        picker.prompt = "Messages below the selected level are filtered out of the tree view and output";
+        picker.items = levels.map((l) => ({
           label: `${l} - ${levelNames[l]}`,
           description: l === currentLevel ? "Current" : undefined,
-          detail: l === "V" || l === "D"
-            ? "Higher verbosity can increase host/device load"
-            : undefined,
+          detail: l === "V" || l === "D" ? "Higher verbosity can increase host/device load" : undefined,
           level: l,
-        })),
-        { placeHolder: "Select minimum log level", title: "Configure Logcat Filters" }
-      );
+        }));
+        picker.onDidAccept(() => {
+          resolve(picker.selectedItems[0]?.level);
+          picker.dispose();
+        });
+        picker.onDidHide(() => {
+          resolve(undefined);
+          picker.dispose();
+        });
+        picker.show();
+      });
 
       if (!levelChoice) {
         return;
       }
 
-      logcatProvider.setMinLevel(levelChoice.level);
+      logcatProvider.setMinLevel(levelChoice);
 
       // Ask for text filter
       const textFilter = await vscode.window.showInputBox({

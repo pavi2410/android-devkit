@@ -794,7 +794,7 @@
     "@android-devkit/gradle": "workspace:*"
   },
   "devDependencies": {
-    "@types/vscode": "1.96.0",
+    "@types/vscode": "1.110.0",
     "@vscode/vsce": "^3.7.1",
     "rolldown": "^1.0.0-rc.9",
     "vscode-gradle": "^3.10.1"

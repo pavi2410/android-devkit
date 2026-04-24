@@ -116,12 +116,18 @@ export function registerAdbStatusFeature(
     statusBar,
     services.adb.onStatusChanged(updateStatusBar),
     vscode.commands.registerCommand(ANDROID_DEVKIT_COMMANDS.showAdbStatus, async () => {
-      let selected: AdbStatusQuickPickItem | undefined;
-      do {
+      let keepOpen = true;
+      while (keepOpen) {
         const status = services.adb.getStatus();
-        selected = await vscode.window.showQuickPick(createStatusItems(status), {
-          title: "Android Debug Bridge Status",
-          placeHolder: "Inspect ADB status or choose a recovery action",
+        const selected = await new Promise<AdbStatusQuickPickItem | undefined>((resolve) => {
+          const picker = vscode.window.createQuickPick<AdbStatusQuickPickItem>();
+          picker.title = "Android Debug Bridge Status";
+          picker.placeholder = "Inspect ADB status or choose a recovery action";
+          picker.prompt = "Top items are actions · items below the separator show current server state";
+          picker.items = createStatusItems(status);
+          picker.onDidAccept(() => { resolve(picker.selectedItems[0]); picker.dispose(); });
+          picker.onDidHide(() => { resolve(undefined); picker.dispose(); });
+          picker.show();
         });
 
         if (!selected?.action) return;
@@ -142,8 +148,9 @@ export function registerAdbStatusFeature(
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           vscode.window.showErrorMessage(`ADB ${selected.action} failed: ${message}`);
+          keepOpen = false;
         }
-      } while (selected?.action);
+      }
     })
   );
 
