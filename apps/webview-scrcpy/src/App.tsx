@@ -26,6 +26,7 @@ type Status = "connecting" | "streaming" | "error";
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [status, setStatus] = useState<Status>("connecting");
   const [errorMessage, setErrorMessage] = useState("");
   const [resolution, setResolution] = useState({ width: 0, height: 0 });
@@ -42,16 +43,14 @@ export function App() {
       return;
     }
 
-    const ctx = canvas.getContext("2d");
+    const ctx = (ctxRef.current ??= canvas.getContext("2d"));
     if (!ctx) {
       console.warn("[scrcpy] renderFrame: could not get 2d context");
       frame.close();
       return;
     }
 
-    // Update canvas size to match frame
     if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
-      console.log(`[scrcpy] Resizing canvas: ${canvas.width}x${canvas.height} → ${frame.displayWidth}x${frame.displayHeight}`);
       canvas.width = frame.displayWidth;
       canvas.height = frame.displayHeight;
     }
@@ -80,10 +79,7 @@ export function App() {
           console.log(`[scrcpy] Metadata received: codec=${msg.codec} ${msg.width}x${msg.height}`);
           if (typeof VideoDecoder !== "undefined") {
             const decoder = new VideoDecoder({
-              output: (frame) => {
-                console.log(`[scrcpy] Frame decoded: ${frame.displayWidth}x${frame.displayHeight} ts=${frame.timestamp}`);
-                renderFrame(frame);
-              },
+              output: renderFrame,
               error: (err) => {
                 console.error("[scrcpy] Decoder error:", err);
                 setStatus("error");
@@ -131,18 +127,14 @@ export function App() {
             combined.set(codecConfigRef.current, 0);
             combined.set(bytes, codecConfigRef.current.byteLength);
             bytes = combined;
-            console.log(`[scrcpy] Prepended ${codecConfigRef.current.byteLength}B config to keyframe (total ${bytes.byteLength}B)`);
           }
 
-          const chunk = new EncodedVideoChunk({
-            type: msg.keyframe ? "key" : "delta",
-            timestamp: msg.pts ?? 0,
-            data: bytes,
-          });
-
-          console.log(`[scrcpy] Decoding chunk: type=${chunk.type} ts=${chunk.timestamp} size=${bytes.byteLength} decoderState=${decoder.state} queueSize=${decoder.decodeQueueSize}`);
           if (decoder.state === "configured") {
-            decoder.decode(chunk);
+            decoder.decode(new EncodedVideoChunk({
+              type: msg.keyframe ? "key" : "delta",
+              timestamp: msg.pts ?? 0,
+              data: bytes,
+            }));
           } else {
             console.warn(`[scrcpy] Decoder not in configured state: ${decoder.state}`);
           }
@@ -167,7 +159,7 @@ export function App() {
 
   // Touch/mouse input handling
   const getDeviceCoords = useCallback(
-    (e: React.PointerEvent<HTMLCanvasElement>) => {
+    (e: { clientX: number; clientY: number }) => {
       const canvas = canvasRef.current;
       if (!canvas) return null;
 
@@ -234,24 +226,16 @@ export function App() {
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = deviceSizeRef.current.width / rect.width;
-      const scaleY = deviceSizeRef.current.height / rect.height;
-
+      const coords = getDeviceCoords(e);
+      if (!coords) return;
       vscode.postMessage({
         type: "scroll",
-        x: Math.round((e.clientX - rect.left) * scaleX),
-        y: Math.round((e.clientY - rect.top) * scaleY),
-        screenWidth: deviceSizeRef.current.width,
-        screenHeight: deviceSizeRef.current.height,
+        ...coords,
         deltaX: -Math.sign(e.deltaX),
         deltaY: -Math.sign(e.deltaY),
       });
     },
-    [],
+    [getDeviceCoords],
   );
 
   const sendKey = useCallback((keyCode: number) => {

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as fs from "node:fs";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import {
   type LocalAdbScrcpyClient,
@@ -24,6 +24,7 @@ interface ScrcpySession {
 export class ScrcpyService implements vscode.Disposable {
   private sessions = new Map<string, ScrcpySession>();
   private outputChannel = getOutputChannel("Scrcpy", { log: true });
+  private cachedServerBinary: Buffer | null = null;
 
   constructor(
     private readonly adbService: AdbService,
@@ -38,13 +39,9 @@ export class ScrcpyService implements vscode.Disposable {
 
     // Push scrcpy server binary to device
     const serverPath = path.join(this.extensionUri.fsPath, "resources", SCRCPY_SERVER_FILENAME);
-    if (!fs.existsSync(serverPath)) {
-      throw new Error(
-        `Scrcpy server binary not found at ${SCRCPY_SERVER_FILENAME}. Place it in the extension resources directory.`,
-      );
-    }
-
-    const serverBinary = fs.readFileSync(serverPath);
+    const serverBinary = this.cachedServerBinary ??= await fs.readFile(serverPath).catch(() => {
+      throw new Error(`Scrcpy server binary not found at ${SCRCPY_SERVER_FILENAME}. Place it in the extension resources directory.`);
+    });
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(serverBinary);
@@ -151,35 +148,25 @@ export class ScrcpyService implements vscode.Disposable {
 
     // Read and forward video packets
     const reader = videoStream.stream.getReader();
-    let packetCount = 0;
-    let configCount = 0;
     try {
       while (!session.disposed) {
         const { done, value } = await reader.read();
         if (done) {
-          this.outputChannel.info(`[${serial}] Video stream done after ${packetCount} data packets, ${configCount} config packets`);
+          this.outputChannel.info(`[${serial}] Video stream done`);
           break;
         }
 
         if (value.type === "configuration") {
-          configCount++;
-          this.outputChannel.info(`[${serial}] Config packet #${configCount}: ${value.data.byteLength} bytes`);
+          this.outputChannel.info(`[${serial}] Config packet: ${value.data.byteLength} bytes`);
           // Forward codec config to webview — WebCodecs needs it as the decoder description (SPS/PPS for H264)
-          const configBase64 = Buffer.from(value.data).toString("base64");
-          session.panel.webview.postMessage({ type: "codecConfig", data: configBase64 });
+          session.panel.webview.postMessage({ type: "codecConfig", data: Buffer.from(value.data).toString("base64") });
           continue;
         }
 
-        packetCount++;
-        if (packetCount <= 5 || packetCount % 100 === 0) {
-          this.outputChannel.info(`[${serial}] Video packet #${packetCount}: keyframe=${value.keyframe} pts=${value.pts} size=${value.data.byteLength}`);
-        }
-
         // Send packet as base64 to webview (postMessage serializes as JSON)
-        const base64 = Buffer.from(value.data).toString("base64");
         session.panel.webview.postMessage({
           type: "videoPacket",
-          data: base64,
+          data: Buffer.from(value.data).toString("base64"),
           keyframe: value.keyframe,
           pts: value.pts ? Number(value.pts) : undefined,
         });

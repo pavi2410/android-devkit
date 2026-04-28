@@ -3,6 +3,7 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import type { SdkService } from "../services/sdk";
 import { getOutputChannel } from "../utils/output";
+import { getNonce } from "../utils/nonce";
 
 type MessageToHost =
   | { type: "ready" }
@@ -196,12 +197,7 @@ export class SdkManagerPanel {
     );
     const nonce = getNonce();
 
-    const distPath = path.join(
-      this.context.extensionUri.fsPath,
-      "dist",
-      "webview-sdk-manager"
-    );
-    const assetsExist = fs.existsSync(path.join(distPath, "index.js"));
+    const assetsExist = fs.existsSync(path.join(distDir.fsPath, "index.js"));
 
     if (!assetsExist) {
       return `<!DOCTYPE html>
@@ -275,11 +271,3 @@ function compareVersionsDesc(idA: string, verA: string, idB: string, verB: strin
   return 0;
 }
 
-function getNonce(): string {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-}

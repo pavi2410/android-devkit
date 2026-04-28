@@ -2,5 +2,6 @@
     "debug.javascript.defaultRuntimeExecutable": {
         "pwa-node": "/Users/pavi2410/.local/share/mise/shims/node"
     },
-    "bun.runtime": "/Users/pavi2410/.local/share/mise/shims/bun"
+    "bun.runtime": "/Users/pavi2410/.local/share/mise/shims/bun",
+    "typescript.tsdk": "node_modules/typescript/lib"
 }

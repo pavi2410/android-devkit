@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import type { ScrcpyService } from "../services/scrcpy";
+import { getNonce } from "../utils/nonce";
 
 export class ScrcpyPanel {
   static readonly viewType = "androidDevkit.scrcpyPage";
@@ -76,12 +77,7 @@ export class ScrcpyPanel {
     );
     const nonce = getNonce();
 
-    const distPath = path.join(
-      this.context.extensionUri.fsPath,
-      "dist",
-      "webview-scrcpy",
-    );
-    const assetsExist = fs.existsSync(path.join(distPath, "index.js"));
+    const assetsExist = fs.existsSync(path.join(distDir.fsPath, "index.js"));
 
     if (!assetsExist) {
       return `<!DOCTYPE html>
@@ -132,11 +128,3 @@ export class ScrcpyPanel {
   }
 }
 
-function getNonce(): string {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-}
