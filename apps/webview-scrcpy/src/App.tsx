@@ -67,12 +67,7 @@ export function App() {
       switch (msg.type) {
         case "codecConfig": {
           console.log(`[scrcpy] Codec config received: ${msg.data.length} base64 chars (Annex B SPS/PPS, will prepend to keyframes)`);
-          const binaryStr = atob(msg.data);
-          const bytes = new Uint8Array(binaryStr.length);
-          for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-          }
-          codecConfigRef.current = bytes;
+          codecConfigRef.current = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
           break;
         }
 
@@ -128,12 +123,7 @@ export function App() {
             return;
           }
 
-          // Decode base64 to Uint8Array
-          const binaryStr = atob(msg.data);
-          let bytes = new Uint8Array(binaryStr.length);
-          for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-          }
+          let bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
 
           // Annex B: prepend SPS/PPS config to each keyframe so the decoder can reinitialize
           if (msg.keyframe && codecConfigRef.current) {
