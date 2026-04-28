@@ -42,6 +42,12 @@ pnpm clean
 
 Run tests for a single package: `pnpm --filter <package-name> run test`
 
+Update failing snapshots in the extension (use the script — `--update-snapshot` flag does not work here):
+
+```bash
+cd apps/extension && pnpm run test:update
+```
+
 ## Architecture
 
 ### Monorepo Structure

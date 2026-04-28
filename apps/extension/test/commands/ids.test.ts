@@ -48,6 +48,7 @@ describe("commands/ids", () => {
         "refreshSdkPackages": "androidDevkit.refreshSdkPackages",
         "runGradleTask": "androidDevkit.runGradleTask",
         "runOnDevice": "androidDevkit.runOnDevice",
+        "runSelectedGradleTasks": "androidDevkit.runSelectedGradleTasks",
         "selectBuildVariant": "androidDevkit.selectBuildVariant",
         "selectRunTarget": "androidDevkit.selectRunTarget",
         "setLogcatFilter": "androidDevkit.setLogcatFilter",
@@ -85,6 +86,7 @@ describe("commands/ids", () => {
     expect(CONTEXT_KEYS).toMatchInlineSnapshot(`
       {
         "fileExplorerHasDevice": "androidDevkit.fileExplorerHasDevice",
+        "gradleTasksHasSelection": "androidDevkit.gradleTasksHasSelection",
         "hasAvds": "androidDevkit.hasAvds",
         "hasDevices": "androidDevkit.hasDevices",
         "logcatPaused": "androidDevkit.logcatPaused",

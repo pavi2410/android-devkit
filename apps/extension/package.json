@@ -791,6 +791,7 @@
     "dev": "rolldown -c --sourcemap --watch",
     "package": "mkdir -p build && pnpm exec vsce package --no-dependencies -o build/",
     "test": "vitest run",
+    "test:update": "vitest run -u",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
