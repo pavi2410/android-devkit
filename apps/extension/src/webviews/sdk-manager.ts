@@ -1,9 +1,8 @@
 import * as vscode from "vscode";
-import * as path from "node:path";
-import * as fs from "node:fs";
 import type { SdkService } from "../services/sdk";
 import { getOutputChannel } from "../utils/output";
-import { getNonce } from "../utils/nonce";
+import { buildWebviewHtml } from "../utils/webview-html";
+import { compareVersionsDesc } from "../utils/sdk-version";
 
 type MessageToHost =
   | { type: "ready" }
@@ -182,62 +181,12 @@ export class SdkManagerPanel {
   }
 
   private getHtml(): string {
-    const webview = this.panel.webview;
-    const distDir = vscode.Uri.joinPath(
-      this.context.extensionUri,
-      "dist",
-      "webview-sdk-manager"
-    );
-
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(distDir, "index.js")
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(distDir, "index.css")
-    );
-    const nonce = getNonce();
-
-    const assetsExist = fs.existsSync(path.join(distDir.fsPath, "index.js"));
-
-    if (!assetsExist) {
-      return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SDK Manager</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none';">
-  <style>
-    body { font-family: var(--vscode-font-family); color: var(--vscode-foreground);
-           background: var(--vscode-editor-background); padding: 2rem; }
-  </style>
-</head>
-<body>
-  <h2>SDK Manager — build required</h2>
-  <p>Run the build command to build the SDK Manager webview assets.</p>
-</body>
-</html>`;
-    }
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SDK Manager</title>
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none';
-             style-src ${webview.cspSource} 'unsafe-inline';
-             script-src 'nonce-${nonce}';
-             img-src ${webview.cspSource} data:;
-             font-src ${webview.cspSource};" />
-  <link rel="stylesheet" href="${styleUri}" />
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
+    return buildWebviewHtml({
+      webview: this.panel.webview,
+      extensionUri: this.context.extensionUri,
+      distSubdir: "webview-sdk-manager",
+      title: "SDK Manager",
+    });
   }
 
   dispose(): void {
@@ -248,26 +197,4 @@ export class SdkManagerPanel {
   }
 }
 
-function extractApiLevel(id: string): number | null {
-  const match = id.match(/android-(\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  return parseFloat(match[1]);
-}
-
-function compareVersionsDesc(idA: string, verA: string, idB: string, verB: string): number {
-  const apiA = extractApiLevel(idA);
-  const apiB = extractApiLevel(idB);
-  if (apiA !== null && apiB !== null && apiA !== apiB) {
-    return apiB - apiA;
-  }
-  const partsA = verA.split(".").map(Number);
-  const partsB = verB.split(".").map(Number);
-  const len = Math.max(partsA.length, partsB.length);
-  for (let i = 0; i < len; i++) {
-    const a = partsA[i] ?? 0;
-    const b = partsB[i] ?? 0;
-    if (b !== a) return b - a;
-  }
-  return 0;
-}
 

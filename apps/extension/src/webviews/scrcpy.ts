@@ -1,8 +1,6 @@
 import * as vscode from "vscode";
-import * as path from "node:path";
-import * as fs from "node:fs";
 import type { ScrcpyService } from "../services/scrcpy";
-import { getNonce } from "../utils/nonce";
+import { buildWebviewHtml } from "../utils/webview-html";
 
 export class ScrcpyPanel {
   static readonly viewType = "androidDevkit.scrcpyPage";
@@ -62,62 +60,12 @@ export class ScrcpyPanel {
   }
 
   private getHtml(): string {
-    const webview = this.panel.webview;
-    const distDir = vscode.Uri.joinPath(
-      this.context.extensionUri,
-      "dist",
-      "webview-scrcpy",
-    );
-
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(distDir, "index.js"),
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(distDir, "index.css"),
-    );
-    const nonce = getNonce();
-
-    const assetsExist = fs.existsSync(path.join(distDir.fsPath, "index.js"));
-
-    if (!assetsExist) {
-      return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Screen Mirror</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none';">
-  <style>
-    body { font-family: var(--vscode-font-family); color: var(--vscode-foreground);
-           background: var(--vscode-editor-background); padding: 2rem; }
-  </style>
-</head>
-<body>
-  <h2>Screen Mirror — build required</h2>
-  <p>Run the build command to build the Screen Mirror webview assets.</p>
-</body>
-</html>`;
-    }
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Screen Mirror</title>
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none';
-             style-src ${webview.cspSource} 'unsafe-inline';
-             script-src 'nonce-${nonce}';
-             img-src ${webview.cspSource} data:;
-             font-src ${webview.cspSource};" />
-  <link rel="stylesheet" href="${styleUri}" />
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
+    return buildWebviewHtml({
+      webview: this.panel.webview,
+      extensionUri: this.context.extensionUri,
+      distSubdir: "webview-scrcpy",
+      title: "Screen Mirror",
+    });
   }
 
   dispose(): void {

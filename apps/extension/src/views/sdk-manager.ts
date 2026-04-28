@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { SdkService, SdkPackage } from "../services/sdk";
 import { ANDROID_DEVKIT_COMMANDS } from "../commands/ids";
+import { compareVersionsDesc } from "../utils/sdk-version";
 
 type SdkManagerTreeItem = CategoryItem | PackageItem | NoSdkItem | ErrorItem;
 
@@ -121,33 +122,3 @@ class ErrorItem extends vscode.TreeItem {
   }
 }
 
-/**
- * Sort SDK packages descending (newer first).
- * Extracts numeric API level from id (e.g. "platforms;android-36") for proper numeric sort,
- * falling back to semver-style version comparison.
- */
-function compareVersionsDesc(idA: string, verA: string, idB: string, verB: string): number {
-  // Try to extract API level from package id for platforms/system-images/sources
-  const apiA = extractApiLevel(idA);
-  const apiB = extractApiLevel(idB);
-  if (apiA !== null && apiB !== null && apiA !== apiB) {
-    return apiB - apiA;
-  }
-
-  // Fall back to version string comparison (numeric parts)
-  const partsA = verA.split(".").map(Number);
-  const partsB = verB.split(".").map(Number);
-  const len = Math.max(partsA.length, partsB.length);
-  for (let i = 0; i < len; i++) {
-    const a = partsA[i] ?? 0;
-    const b = partsB[i] ?? 0;
-    if (b !== a) return b - a;
-  }
-  return 0;
-}
-
-function extractApiLevel(id: string): number | null {
-  const match = id.match(/android-(\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  return parseFloat(match[1]);
-}
